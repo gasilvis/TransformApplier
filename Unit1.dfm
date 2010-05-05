@@ -17,13 +17,13 @@ object Form1: TForm1
   Scaled = False
   ShowHint = True
   OnCreate = FormCreate
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 19
   object CoefPage: TPageControl
     Left = 0
     Top = 0
     Width = 1028
-    Height = 667
+    Height = 665
     ActivePage = TabSheet1
     Align = alClient
     TabOrder = 0
@@ -32,7 +32,7 @@ object Form1: TForm1
       object Label6: TLabel
         Left = 336
         Top = 8
-        Width = 355
+        Width = 353
         Height = 19
         Caption = 'Paste your un-transformed AAVSO records here'
       end
@@ -48,7 +48,7 @@ object Form1: TForm1
       object VersionLabel: TLabel
         Left = 28
         Top = 3
-        Width = 84
+        Width = 83
         Height = 19
         Caption = 'Version 0.1'
       end
@@ -126,7 +126,7 @@ object Form1: TForm1
         object Label3: TLabel
           Left = 24
           Top = 126
-          Width = 19
+          Width = 18
           Height = 19
           Hint = 'reciprocal of slope of (r-i) versus (R-I)'
           Caption = 'Tri'
@@ -142,7 +142,7 @@ object Form1: TForm1
         object Label5: TLabel
           Left = 24
           Top = 190
-          Width = 15
+          Width = 14
           Height = 19
           Hint = 'slope of (R-r) versus (R-I)'
           Caption = 'Tr'
@@ -248,41 +248,38 @@ object Form1: TForm1
         Lines.Strings = (
           
             'This application is for applying transform coefficients to your ' +
-            'AAVSO observations. See the website'
-          'http://www.gasilvis.net/transformer/ for more'
-          'details.'
+            'AAVSO observations. See the website '
+          'http://code.google.com/p/transformapplier/ for more details.'
           ''
           'Inputs:'
           
             '- The input text file is in the format that you would submit to ' +
             'the AAVSO using the WebObs facility. Paste it into the upper mem' +
-            'o field'
-          'or use the'
-          'File/Save menu.'
+            'o field '
+          'or use the File menu.'
           
             '- Coefficients should be input into the appropriate edit boxes. ' +
             'They will be saved and recovered at start up from an INI file sa' +
-            'ved in the'
-          'same directory'
+            'ved in the '
           
-            'as the application. If you don'#39't have a particular coefficient, ' +
-            'leave it 0; the program will warn you if it failed because of la' +
-            'ck of'
-          'coefficients.'
+            'same directory as the application. If you don'#39't have a particula' +
+            'r coefficient, leave it 0; the program will warn you if it faile' +
+            'd because of '
+          'lack of coefficients.'
           
             '- Note that the input text needs to contain "#CREFMAG= " stateme' +
             'nts before each observation line so the application will know ho' +
-            'w to'
-          'interpret "ABS"'
+            'w to '
           
-            'and have the reference magnitude with which to perform the trans' +
-            'formation. Actually, you only need to enter the CREFMAG'
-          'information for a'
-          'particular comparison star and filter combination once.'
+            'interpret "ABS" and have the reference magnitude with which to p' +
+            'erform the transformation. Actually, you only need to enter the '
+          
+            'CREFMAG information for a particular comparison star and filter ' +
+            'combination once.'
           
             '- Ensemble observations are handled too. You still need CREFMAG,' +
             ' though now it is the reference magnitude of the check star list' +
-            'ed'
+            'ed '
           'in KNAME.'
           ''
           'Output:'
@@ -290,8 +287,7 @@ object Form1: TForm1
             '- The output appears in the lower memo field. You can click the ' +
             '"Copy to Clipboard" button to have the text available for a past' +
             'e or use '
-          'the File/Save '
-          'menu.'
+          'the File/Save menu.'
           ''
           'Equations in the output using the following notation:'
           '-  The target star is referred to as "s"'
@@ -299,9 +295,8 @@ object Form1: TForm1
           
             '-  Measured magnitudes have lower case filter letters, upper cas' +
             'e means reference or corrected magnitude. For example Bc is the '
-          'reference B filter '
-          'magnitude of the comparison star.'
-          '-  T_  is a transform coefficient.'
+          'reference B filter magnitude of the comparison star.'
+          '-  T  is a transform coefficient.'
           '   Tbv= reciprocal of slope of (b-v) versus (B-V)'
           '   Tvr= reciprocal of slope of (v-r) versus (V-R)'
           '   Tvi= reciprocal of slope of (v-i) versus (V-I)'
@@ -309,15 +304,14 @@ object Form1: TForm1
           '   Tv= slope of (V-v) versus (V-R)'
           '   Tr= slope of (R-r) versus (R-I)'
           '   Tb= slope of (B-b) versus (B-V)'
-          ''
+          '   Tv__I= slope of (V-v) versus (V-I)'
           ''
           ''
           'VERR -'
           
             'While Transformer recomputes VMAG, it does not modify the VERR v' +
             'alue. The use should make any relevant comments in the note '
-          'field of the '
-          'observation record.'
+          'field of the observation record.'
           ''
           ''
           ''
@@ -326,23 +320,20 @@ object Form1: TForm1
             ' - Applying transforms means relating several observations toget' +
             'her. If you are doing a BVRI transform then 4 observations are t' +
             'ied '
-          'together. Ideally '
           
-            'the user should control explicitly this by using the Group field' +
-            '.'
+            'together. Ideally the user should control explicitly this by usi' +
+            'ng the Group field.'
           
             ' - If the user does not control this then the program will attem' +
             'pt to group the observations, aiming to do the broadest transfor' +
             'm (ie, as '
-          'many filters as '
-          'possible)'
+          'many filters as possible)'
           ''
           
             ' - Scan the file for all observations of star S/Group G to deter' +
             'mine which filters are available. It is assumed that all the obs' +
             'ervations in '
-          'the file can be '
-          'compared (ie, were done at about the same time)'
+          'the file can be compared (ie, were done at about the same time)'
           
             ' - Then go through the list of observations, plugging in the dat' +
             'a for that observation in to the group of that filter combinatio' +
@@ -403,8 +394,8 @@ object Form1: TForm1
           'VI    modeled on the RI formulation'
           ' (Vs - Is) = (Vc - Ic) + Tvi * [(vs - is) - (vc - ic)]'
           
-            ' Vs = vs + (Vc - vc) + Tv * [(Vs - Is) - (Vc - Ic)], using the s' +
-            'olution for (Vs - Is) in the above line'
+            ' Vs = vs + (Vc - vc) + Tv__I * [(Vs - Is) - (Vc - Ic)], using th' +
+            'e solution for (Vs - Is) in the above line'
           
             ' Is = Vs - (Vs - Is), using Vs from the line above, and (Vs - Is' +
             ') from the first line'
@@ -432,8 +423,8 @@ object Form1: TForm1
           'BVI'
           ' (Vs - Is) = (Vc - Ic) + Tvi * [(vs - is) - (vc - ic)]'
           
-            ' Vs = vs + (Vc - vc) + Tv * [(Vs - Is) - (Vc - Ic)], using the s' +
-            'olution for (Vs - Is) in the above line'
+            ' Vs = vs + (Vc - vc) + Tv__I * [(Vs - Is) - (Vc - Ic)], using th' +
+            'e solution for (Vs - Is) in the above line'
           
             ' Is = Vs - (Vs - Is), using Vs from the line above, and (Vs - Is' +
             ') from the first line'
@@ -448,11 +439,7 @@ object Form1: TForm1
             ' Is = Rs - (Rs - Is), using Rs from the line above, and (Rs - Is' +
             ') from the first line'
           ''
-          ''
-          ''
-          ''
-          ''
-          ' ')
+          '')
         ReadOnly = True
         TabOrder = 0
       end
@@ -490,7 +477,7 @@ object Form1: TForm1
     DesignFormWidth = 1036
     DesignFormHeight = 721
     DesignFormClientWidth = 1028
-    DesignFormClientHeight = 667
+    DesignFormClientHeight = 665
     DesignFormLeft = 10
     DesignFormTop = 38
     Font.Charset = ANSI_CHARSET

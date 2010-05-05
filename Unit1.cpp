@@ -524,6 +524,10 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          j= s.SubString(k, 20).Pos(delim);
          //sd[sdi].GROUP= s.SubString(k, j- 1).ToInt(); might be "NA"
          sd[sdi].GROUPs= s.SubString(k, j- 1);
+         if(sd[sdi].GROUPs=="NA") {
+            sd[sdi].processed= true; // skip
+            sd[sdi].ErrorMsg+= "GROUP is NA.";
+         }
          k+= j;
 
          j= s.SubString(k, 20).Pos(delim);
