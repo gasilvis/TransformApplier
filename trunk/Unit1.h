@@ -11,6 +11,7 @@
 #include "ElastFrm.hpp"
 #include <ComCtrls.hpp>
 #include <Dialogs.hpp>
+#include <ExtCtrls.hpp>
 //---------------------------------------------------------------------------
 class TForm1 : public TForm
 {
@@ -35,14 +36,15 @@ __published:	// IDE-managed Components
    TTabSheet *TabSheet2;
    TMemo *Memo3;
    TMenuItem *Saveuntransformedobsfile1;
+   TTabSheet *Coefficients;
    TGroupBox *GroupBox1;
-   TLabel *Label1;
-   TLabel *Label2;
-   TLabel *Label3;
-   TLabel *Label4;
-   TLabel *Label5;
-   TLabel *label9;
-   TLabel *Label10;
+   TCheckBox *Label2;
+   TCheckBox *Label3;
+   TCheckBox *Label4;
+   TCheckBox *Label5;
+   TCheckBox *Label9;
+   TCheckBox *Label10;
+   TCheckBox *Label8;
    TEdit *TbvEdit;
    TEdit *TvrEdit;
    TEdit *TriEdit;
@@ -51,7 +53,63 @@ __published:	// IDE-managed Components
    TEdit *TbEdit;
    TEdit *TviEdit;
    TEdit *Tv__IEdit;
-   TLabel *Label8;
+   TEdit *TbrEdit;
+   TEdit *TbiEdit;
+   TCheckBox *Label12;
+   TEdit *Tb__REdit;
+   TCheckBox *Label13;
+   TEdit *Tb__IEdit;
+   TCheckBox *Label14;
+   TCheckBox *Label15;
+   TCheckBox *Label16;
+   TCheckBox *Label17;
+   TCheckBox *Label18;
+   TEdit *TbbEdit;
+   TEdit *TvvEdit;
+   TEdit *TrrEdit;
+   TEdit *TiiEdit;
+   TEdit *rTiiEdit;
+   TEdit *rTrrEdit;
+   TEdit *rTvvEdit;
+   TEdit *rTbbEdit;
+   TEdit *rTrEdit;
+   TEdit *rTv__IEdit;
+   TEdit *rTvEdit;
+   TEdit *rTb__IEdit;
+   TEdit *rTb__REdit;
+   TEdit *rTbEdit;
+   TEdit *rTriEdit;
+   TEdit *rTviEdit;
+   TEdit *rTvrEdit;
+   TEdit *rTbiEdit;
+   TEdit *rTbrEdit;
+   TEdit *rTbvEdit;
+   TLabel *Label19;
+   TLabel *Label20;
+   TTabSheet *Report;
+   TMemo *Memo4;
+   TRadioGroup *RadioGroup1;
+   TRadioButton *RadioButton1;
+   TRadioButton *RadioButton2;
+   TRadioButton *RadioButton3;
+   TRadioButton *RadioButton4;
+   TRadioButton *RadioButton5;
+   TRadioButton *RadioButton6;
+   TRadioButton *RadioButton7;
+   TRadioButton *RadioButton8;
+   TRadioButton *RadioButton9;
+   TRadioButton *RadioButton10;
+   TRadioButton *RadioButton11;
+   TRadioButton *RadioButton12;
+   TEdit *TbbConsEdit;
+   TEdit *TvvConsEdit;
+   TEdit *TrrConsEdit;
+   TEdit *TiiConsEdit;
+   TLabel *Label21;
+   TLabel *Label22;
+   TCheckBox *Label11;
+   TCheckBox *Label1;
+   TRadioButton *RadioButton13;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
