@@ -46,7 +46,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  1.6
+#define Version  1.7
 
 
 /* adding a coefficient:
@@ -333,6 +333,8 @@ enum {
    ,FILTC_BVIRNewV
    ,FILTC_BVIRNewV__I
    ,FILTC_BVIRNewR
+   ,FILTC_BVRNewB
+   ,FILTC_BVINewB
 // add here
    ,FILTC_NUM
 };
@@ -361,18 +363,21 @@ enum { // mask values
    ,FILTC_BVIRxNewV   =   (FILT_Bx|FILT_Vx|FILT_Rx|FILT_Ix)
    ,FILTC_BVIRxNewV__I=   (FILT_Bx|FILT_Vx|FILT_Rx|FILT_Ix)
    ,FILTC_BVIRxNewR   =   (FILT_Bx|FILT_Vx|FILT_Rx|FILT_Ix)
+   ,FILTC_BVRxNewB=    (FILT_Bx|FILT_Vx|FILT_Rx)
+   ,FILTC_BVIxNewB=    (FILT_Bx|FILT_Vx|FILT_Ix)
 // add here
 };
 
 
 
 const char* FILTC_names[]= {
-    "BVIR", "BV", "VR", "VRI", "BVR", "RI", "VI", "BVI", "BVIR", "BVIR", "BVIR", "BVIR", "BVIR", "BVIR"
+    "BVIR", "BV", "VR", "VRI", "BVR", "RI", "VI", "BVI", "BVIR", "BVIR", "BVIR", "BVIR", "BVIR", "BVIR", "BVR", "BVI"
 };
 
 
 char FILTC_mask[]= {FILTC_BVIRx, FILTC_BVx, FILTC_VRx, FILTC_VRIx, FILTC_BVRx, FILTC_RIx, FILTC_VIx, FILTC_BVIx
-    ,FILTC_BVIRxNewB, FILTC_BVIRxNewB__R, FILTC_BVIRxNewB__I, FILTC_BVIRxNewV, FILTC_BVIRxNewV__I, FILTC_BVIRxNewR};
+    ,FILTC_BVIRxNewB, FILTC_BVIRxNewB__R, FILTC_BVIRxNewB__I, FILTC_BVIRxNewV, FILTC_BVIRxNewV__I, FILTC_BVIRxNewR
+    ,FILTC_BVRxNewB, FILTC_BVIxNewB   };
 
 // global vars for equations
 float Bs, bs, Vs, vs, Rs, rs, Is, is,   Bc, bc, Vc, vc, Rc, rc, Ic, ic,  oBs, oVs, oRs, oIs;
@@ -517,6 +522,26 @@ AnsiString FILTC_desc[FILTC_NUM][FILTC_desc_rows]= {
     ,"#  Vs = Rs + (Vc-Rc) + Tvr   * ((vs-rs)-(vc-rc))"
     ,"#  Bs = Vs + (Bc-Vc) + Tbv   * ((bs-vs)-(bc-vc))"
     ,"#  Is = Rs - (Rc-Ic) - Tri   * ((rs-is)-(rc-ic))"
+    ,NULL
+   }
+   ,
+   {
+     "# BVR  NewB "
+    ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is as observed"
+    ,"#  Bs = bs + (Bc-bc) + Tb * ((Bs-Vs)-(Bc-Vc))"
+    ,"#  Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc))"
+    ,"#  Rs = Vs - (Vc-Rc) - Tvr* ((vs-rs)-(vc-rc))"
+    ,NULL
+    ,NULL
+   }
+   ,
+   {
+     "# BVI  NewB "
+    ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is as observed"
+    ,"#  Bs = bs + (Bc-bc) + Tb * ((Bs-Vs)-(Bc-Vc))"
+    ,"#  Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc))"
+    ,"#  Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic))"
+    ,NULL
     ,NULL
    }
 };
@@ -1288,6 +1313,28 @@ void ProcessStarData(StarData *d, char fc)
                                 + ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          break;
       case FILTC_BVRx:
+       if(Form1->RadioButton2->Checked) { // New B  (V)
+         if(Tbv==0 || Tvr==0 || Tb==0) {
+            d->ErrorMsg+= " Missing a coefficient; need Tbv, Tvr and Tb.";
+            d->TRANS= false;
+            break;
+         }
+         Formula= Form1->RadioButton2->Caption;
+         //Tb = ((Bs-bs)-(Bc-bc)) / ((Bs-Vs)-(Bc-Vc))
+         //Tbv= ((Bs-Vs)-(Bc-Vc)) / ((bs-vs)-(bc-vc))
+         //Tvr= ((Vs-Rs)-(Vc-Rc)) / ((vs-rs)-(vc-rc))
+         Bs= bs, Vs= vs, Rs= rs;
+         do {
+            oBs= Bs, oVs= Vs, oRs= Rs;
+            Bs = bs + (Bc-bc) + Tb * ((Bs-Vs)-(Bc-Vc));
+            Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
+            Rs = Vs - (Vc-Rc) - Tvr* ((vs-rs)-(vc-rc));
+            Form1->Memo2->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs)));
+         } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 );
+         d->StarsUsed= "# BVR using New B: B @ "+ sd[sf[FILT_Bi]].DATEs
+                                 + ", V @ "+ sd[sf[FILT_Vi]].DATEs
+                                 + ", R @ "+ sd[sf[FILT_Ri]].DATEs;
+       } else { // Sarty
          if(Tv==0 || Tvr==0 || Tbv==0) {
             d->ErrorMsg+= " Missing a coefficient; need Tv, Tvr and Tbv.";
             d->TRANS= false;
@@ -1299,6 +1346,7 @@ void ProcessStarData(StarData *d, char fc)
          d->StarsUsed= "# BVR using: B @ "+ sd[sf[FILT_Bi]].DATEs
                                 + ", V @ "+ sd[sf[FILT_Vi]].DATEs
                                 + ", R @ "+ sd[sf[FILT_Ri]].DATEs;
+        }
          break;
       case FILTC_RIx:
          if(Tr==0 || Tri==0) {
@@ -1323,6 +1371,28 @@ void ProcessStarData(StarData *d, char fc)
                                + ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          break;
       case FILTC_BVIx:
+       if(Form1->RadioButton2->Checked) { // New B  (V)
+         if(Tbv==0 || Tvi==0 || Tb==0) {
+            d->ErrorMsg+= " Missing a coefficient; need Tbv, Tvi and Tb.";
+            d->TRANS= false;
+            break;
+         }
+         Formula= Form1->RadioButton2->Caption;
+         //Tb = ((Bs-bs)-(Bc-bc)) / ((Bs-Vs)-(Bc-Vc))
+         //Tbv= ((Bs-Vs)-(Bc-Vc)) / ((bs-vs)-(bc-vc))
+         //Tvi= ((Vs-Is)-(Vc-Ic)) / ((vs-is)-(vc-ic))
+         Bs= bs, Vs= vs, Is= is;
+         do {
+            oBs= Bs, oVs= Vs, oIs= Is;
+            Bs = bs + (Bc-bc) + Tb * ((Bs-Vs)-(Bc-Vc));
+            Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
+            Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
+            Form1->Memo2->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
+         } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Is-oIs)>0.0001 );
+         d->StarsUsed= "# BVI using New B: B @ "+ sd[sf[FILT_Bi]].DATEs
+                                 + ", V @ "+ sd[sf[FILT_Vi]].DATEs
+                                 + ", I @ "+ sd[sf[FILT_Ii]].DATEs;
+       } else { // Sarty
          if(Tv__I==0 || Tvi==0 || Tbv==0) {
             d->ErrorMsg+= " Missing a coefficient; need Tv__I, Tvi and Tbv.";
             d->TRANS= false;
@@ -1334,6 +1404,7 @@ void ProcessStarData(StarData *d, char fc)
          d->StarsUsed= "# BVI using: B @ "+ sd[sf[FILT_Bi]].DATEs
                                 + ", V @ "+ sd[sf[FILT_Vi]].DATEs
                                 + ", I @ "+ sd[sf[FILT_Ii]].DATEs;
+       }
          break;
       default: // unknown combination
          d->ErrorMsg+= " Un-supported filter combination: ";
