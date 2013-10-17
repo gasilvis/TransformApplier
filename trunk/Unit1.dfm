@@ -82,7 +82,7 @@ object Form1: TForm1
       end
       object ProcessButton: TButton
         Left = 24
-        Top = 384
+        Top = 416
         Width = 105
         Height = 25
         Hint = 'Transform  the untransformed'
@@ -92,7 +92,7 @@ object Form1: TForm1
       end
       object ToClipboardButton: TButton
         Left = 24
-        Top = 440
+        Top = 496
         Width = 105
         Height = 25
         Hint = 'copy the transformed observations to the clipboard'
@@ -214,6 +214,16 @@ object Form1: TForm1
         Hint = 'Select on Coefficients tab'
         Caption = 'Custom'
         TabOrder = 17
+      end
+      object IncludeRaw: TCheckBox
+        Left = 16
+        Top = 392
+        Width = 121
+        Height = 17
+        Hint = 'Include Un transformed obs with Transformed  '
+        Caption = 'include raw'
+        Enabled = False
+        TabOrder = 18
       end
     end
     object Coefficients: TTabSheet

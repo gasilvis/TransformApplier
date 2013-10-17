@@ -110,6 +110,7 @@ __published:	// IDE-managed Components
    TCheckBox *Label11;
    TCheckBox *Label1;
    TRadioButton *RadioButton13;
+   TCheckBox *IncludeRaw;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);

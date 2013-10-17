@@ -46,7 +46,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  1.7
+#define Version  1.91
 
 
 /* adding a coefficient:
@@ -335,6 +335,7 @@ enum {
    ,FILTC_BVIRNewR
    ,FILTC_BVRNewB
    ,FILTC_BVINewB
+   ,FILTC_VRINew
 // add here
    ,FILTC_NUM
 };
@@ -365,19 +366,20 @@ enum { // mask values
    ,FILTC_BVIRxNewR   =   (FILT_Bx|FILT_Vx|FILT_Rx|FILT_Ix)
    ,FILTC_BVRxNewB=    (FILT_Bx|FILT_Vx|FILT_Rx)
    ,FILTC_BVIxNewB=    (FILT_Bx|FILT_Vx|FILT_Ix)
+   ,FILTC_VRIxNew=    (FILT_Vx|FILT_Rx|FILT_Ix)
 // add here
 };
 
 
 
 const char* FILTC_names[]= {
-    "BVIR", "BV", "VR", "VRI", "BVR", "RI", "VI", "BVI", "BVIR", "BVIR", "BVIR", "BVIR", "BVIR", "BVIR", "BVR", "BVI"
+    "BVIR", "BV", "VR", "VRI", "BVR", "RI", "VI", "BVI", "BVIR", "BVIR", "BVIR", "BVIR", "BVIR", "BVIR", "BVR", "BVI", "VRI"
 };
 
 
 char FILTC_mask[]= {FILTC_BVIRx, FILTC_BVx, FILTC_VRx, FILTC_VRIx, FILTC_BVRx, FILTC_RIx, FILTC_VIx, FILTC_BVIx
     ,FILTC_BVIRxNewB, FILTC_BVIRxNewB__R, FILTC_BVIRxNewB__I, FILTC_BVIRxNewV, FILTC_BVIRxNewV__I, FILTC_BVIRxNewR
-    ,FILTC_BVRxNewB, FILTC_BVIxNewB   };
+    ,FILTC_BVRxNewB, FILTC_BVIxNewB, FILTC_VRIxNew  };
 
 // global vars for equations
 float Bs, bs, Vs, vs, Rs, rs, Is, is,   Bc, bc, Vc, vc, Rc, rc, Ic, ic,  oBs, oVs, oRs, oIs;
@@ -541,6 +543,16 @@ AnsiString FILTC_desc[FILTC_NUM][FILTC_desc_rows]= {
     ,"#  Bs = bs + (Bc-bc) + Tb * ((Bs-Vs)-(Bc-Vc))"
     ,"#  Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc))"
     ,"#  Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic))"
+    ,NULL
+    ,NULL
+   }
+   ,
+   {
+     "# VRI  New "
+    ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is as observed"
+    ,"#  Vs = vs + (Vc-vc) + Tv    * ((Vs-Rs)-(Vc-Rc))"
+    ,"#  Rs = Vs - (Vc-Rc) - Tvr   * ((vs-rs)-(vc-rc))"
+    ,"#  Is = Rs - (Rc-Ic) - Tri   * ((rs-is)-(rc-ic))"
     ,NULL
     ,NULL
    }
@@ -820,7 +832,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          }
       }
    } while(42);
-   ShowMessage("Review the convergence of the New formulas (if any)");
+
+//   ShowMessage("Review the convergence of the New formulas (if any)");
    Memo2->Lines->Clear(); // output window
 //   Memo4->Lines->Clear(); // report window
    Memo4->Lines->Add(Formula);
@@ -868,7 +881,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
              }
 
             // show un-transformed data as a comment
-            Memo2->Lines->Add("#"+ s);
+            Memo2->Lines->Add((IncludeRaw->Checked?"":"#")+ s);
 
             // now the transformed data
             s= sd[j].NAME+ delim;
@@ -905,7 +918,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                s+= FormatFloat("0.000", sd[j].CMAG)+ delim;
 
                s+= sd[j].KNAME+ delim;
-               if(sd[j].KNAME=="na") s+="na"+ delim;
+               if(sd[j].KNAME=="na")
+                  s+="na" , s+= delim;
                else s+= FormatFloat("0.000", sd[j].KMAG)+ delim;
             }
             s+= FormatFloat("0.0000", sd[j].AMASS)+ delim;
@@ -1300,6 +1314,29 @@ void ProcessStarData(StarData *d, char fc)
                                + ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          break;
       case FILTC_VRIx:
+        if(Form1->RadioButton2->Checked) { // New   (V)
+         if(Tvr==0 || Tri==0 || Tv==0) {
+            d->ErrorMsg+= " Missing a coefficient; need Tvr, Tri and Tv.";
+            d->TRANS= false;
+            break;
+         }
+         Formula= Form1->RadioButton5->Caption;
+         //Tv   = ((Vs-vs)-(Vc-vc)) / ((Vs-Rs)-(Vc-Rc))
+         //Tvr  = ((Vs-Rs)-(Vc-Rc)) / ((vs-rs)-(vc-rc))
+         //Tri  = ((Rs-Is)-(Rc-Ic)) / ((rs-is)-(rc-ic))
+         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         do {
+            oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
+            Vs = vs + (Vc-vc) + Tv    * ((Vs-Rs)-(Vc-Rc));
+            //Bs = Vs + (Bc-Vc) + Tbv   * ((bs-vs)-(bc-vc));
+            Rs = Vs - (Vc-Rc) - Tvr   * ((vs-rs)-(vc-rc));
+            Is = Rs - (Rc-Ic) - Tri   * ((rs-is)-(rc-ic));
+            Form1->Memo2->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+         } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
+         d->StarsUsed= "# VRI using: New    V @ "+ sd[sf[FILT_Vi]].DATEs
+                                + ", R @ "+ sd[sf[FILT_Ri]].DATEs
+                                + ", I @ "+ sd[sf[FILT_Ii]].DATEs;
+       } else {
          if(Tr==0 || Tri==0 || Tv==0 || Tvr==0) {
             d->ErrorMsg+= " Missing a coefficient; need Tr, Tri, Tv and Tvr.";
             d->TRANS= false;
@@ -1309,8 +1346,10 @@ void ProcessStarData(StarData *d, char fc)
          Is = Rs - ((Rc - Ic) + Tri * ((rs - is) - (rc - ic)));
          Vs = vs + (Vc - vc) + Tv * Tvr * ((vs - rs) - (vc - rc));
          d->StarsUsed= "# VRI using: V @ "+ sd[sf[FILT_Vi]].DATEs
-                                + ", R @ "+ sd[sf[FILT_Ri]].DATEs;
+                                + ", R @ "+ sd[sf[FILT_Ri]].DATEs
                                 + ", I @ "+ sd[sf[FILT_Ii]].DATEs;
+
+       }
          break;
       case FILTC_BVRx:
        if(Form1->RadioButton2->Checked) { // New B  (V)
