@@ -63,6 +63,7 @@ object Form1: TForm1
         Font.Name = 'Courier New'
         Font.Style = []
         ParentFont = False
+        ScrollBars = ssVertical
         TabOrder = 0
         WordWrap = False
       end

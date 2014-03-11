@@ -808,9 +808,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
       // process this star/groups obs
       // nb. this is prepared to handle an overloaded group
       for(i= 0; i< sdi; i++) {
+   AnsiString as;    
          if((sd[i].NAME+ sd[i].GROUPs)==cs && sd[i].processed==false) {
             SetStarData(sd[i]);
             sf[sd[i].filter]= i; // must provide data for its own filter
+ Form1->Memo2->Lines->Add(as.sprintf("I= %i, fc= %i", i, fc));
+
             ProcessStarData(&sd[i], fc); // sets processed flag
             // capture the group data
             if(gdi==gdiMAX) {
@@ -833,7 +836,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
       }
    } while(42);
 
-//   ShowMessage("Review the convergence of the New formulas (if any)");
+   ShowMessage("Review the convergence of the New formulas (if any)");
    Memo2->Lines->Clear(); // output window
 //   Memo4->Lines->Clear(); // report window
    Memo4->Lines->Add(Formula);
@@ -1007,6 +1010,7 @@ void ProcessStarData(StarData *d, char fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is;
          do {
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
+      Form1->Memo2->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", Bs, Vs, Rs, Is));
             Bs = bs + (Bc-bc) + Tb * ((Bs-Vs)-(Bc-Vc));
             Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
             Rs = Vs - (Vc-Rc) - Tvr* ((vs-rs)-(vc-rc));
@@ -1165,7 +1169,7 @@ void ProcessStarData(StarData *d, char fc)
             Form1->Memo2->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BVIR using Newer B: B @ "+ sd[sf[FILT_Bi]].DATEs
-                                 + ", V @ "+ sd[sf[FILT_Vi]].DATEs
+                                  + ", V @ "+ sd[sf[FILT_Vi]].DATEs
                                  + ", R @ "+ sd[sf[FILT_Ri]].DATEs
                                  + ", I @ "+ sd[sf[FILT_Ii]].DATEs;
 
