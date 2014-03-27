@@ -12,6 +12,13 @@
 #include <ComCtrls.hpp>
 #include <Dialogs.hpp>
 #include <ExtCtrls.hpp>
+#include "AdPort.hpp"
+#include "AdWnPort.hpp"
+#include "OoMisc.hpp"
+#include <ScktComp.hpp>
+#include <NMHttp.hpp>
+#include <Psock.hpp>
+#include <HttpProt.hpp>
 //---------------------------------------------------------------------------
 class TForm1 : public TForm
 {
@@ -48,36 +55,24 @@ __published:	// IDE-managed Components
    TEdit *TbvEdit;
    TEdit *TvrEdit;
    TEdit *TriEdit;
-   TEdit *TvEdit;
-   TEdit *TrEdit;
-   TEdit *TbEdit;
+   TEdit *Tv_vrEdit;
+   TEdit *Tr_riEdit;
+   TEdit *Tb_bvEdit;
    TEdit *TviEdit;
-   TEdit *Tv__IEdit;
+   TEdit *Tv_viEdit;
    TEdit *TbrEdit;
    TEdit *TbiEdit;
    TCheckBox *Label12;
-   TEdit *Tb__REdit;
+   TEdit *Tb_brEdit;
    TCheckBox *Label13;
-   TEdit *Tb__IEdit;
+   TEdit *Tb_biEdit;
    TCheckBox *Label14;
-   TCheckBox *Label15;
-   TCheckBox *Label16;
-   TCheckBox *Label17;
-   TCheckBox *Label18;
-   TEdit *TbbEdit;
-   TEdit *TvvEdit;
-   TEdit *TrrEdit;
-   TEdit *TiiEdit;
-   TEdit *rTiiEdit;
-   TEdit *rTrrEdit;
-   TEdit *rTvvEdit;
-   TEdit *rTbbEdit;
-   TEdit *rTrEdit;
-   TEdit *rTv__IEdit;
-   TEdit *rTvEdit;
-   TEdit *rTb__IEdit;
-   TEdit *rTb__REdit;
-   TEdit *rTbEdit;
+   TEdit *rTr_riEdit;
+   TEdit *rTv_viEdit;
+   TEdit *rTv_vrEdit;
+   TEdit *rTb_biEdit;
+   TEdit *rTb_brEdit;
+   TEdit *rTb_bvEdit;
    TEdit *rTriEdit;
    TEdit *rTviEdit;
    TEdit *rTvrEdit;
@@ -96,21 +91,44 @@ __published:	// IDE-managed Components
    TRadioButton *RadioButton5;
    TRadioButton *RadioButton6;
    TRadioButton *RadioButton7;
-   TRadioButton *RadioButton8;
-   TRadioButton *RadioButton9;
-   TRadioButton *RadioButton10;
-   TRadioButton *RadioButton11;
-   TRadioButton *RadioButton12;
-   TEdit *TbbConsEdit;
-   TEdit *TvvConsEdit;
-   TEdit *TrrConsEdit;
-   TEdit *TiiConsEdit;
-   TLabel *Label21;
-   TLabel *Label22;
    TCheckBox *Label11;
    TCheckBox *Label1;
    TRadioButton *RadioButton13;
    TCheckBox *IncludeRaw;
+   TCheckBox *CheckBox1;
+   TCheckBox *CheckBox2;
+   TCheckBox *CheckBox3;
+   TEdit *Tv_bvEdit;
+   TEdit *rTv_bvEdit;
+   TEdit *rTr_bvEdit;
+   TEdit *rTi_bvEdit;
+   TEdit *Ti_bvEdit;
+   TEdit *Tr_bvEdit;
+   TLabel *Label15;
+   TEdit *EuEdit;
+   TEdit *EiEdit;
+   TEdit *ErEdit;
+   TEdit *EvEdit;
+   TEdit *EbEdit;
+   TLabel *Label23;
+   TLabel *Label24;
+   TLabel *Label25;
+   TLabel *Label26;
+   TLabel *Label27;
+   TLabel *Label28;
+   TEdit *rEbEdit;
+   TEdit *rEvEdit;
+   TEdit *rErEdit;
+   TEdit *rEiEdit;
+   TEdit *rEuEdit;
+   TCheckBox *CheckBox4;
+   TCheckBox *CheckBox5;
+   TCheckBox *CheckBox6;
+   TCheckBox *CheckBox7;
+   TCheckBox *CheckBox8;
+   TButton *Button1;
+   THttpCli *HttpCli1;
+   TButton *Button2;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -119,6 +137,11 @@ __published:	// IDE-managed Components
    void __fastcall Save1Click(TObject *Sender);
    void __fastcall Exit1Click(TObject *Sender);
    void __fastcall Saveuntransformedobsfile1Click(TObject *Sender);
+   void __fastcall Button1Click(TObject *Sender);
+   void __fastcall HttpCli1DocBegin(TObject *Sender);
+   void __fastcall HttpCli1DocEnd(TObject *Sender);
+   void __fastcall Button2Click(TObject *Sender);
+
 private:	// User declarations
 public:		// User declarations
    __fastcall TForm1(TComponent* Owner);
