@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 275
-  Top = 146
+  Left = 309
+  Top = 149
   Width = 1024
   Height = 719
   HorzScrollBar.Visible = False
@@ -112,9 +112,9 @@ object Form1: TForm1
       object RadioButton1: TRadioButton
         Left = 24
         Top = 48
-        Width = 65
+        Width = 97
         Height = 17
-        Caption = 'Sarty'
+        Caption = 'Classic'
         Checked = True
         TabOrder = 5
         TabStop = True
@@ -167,46 +167,6 @@ object Form1: TForm1
         Caption = 'New R'
         TabOrder = 11
       end
-      object RadioButton8: TRadioButton
-        Left = 24
-        Top = 224
-        Width = 97
-        Height = 17
-        Caption = 'Newer B'
-        TabOrder = 12
-      end
-      object RadioButton9: TRadioButton
-        Left = 24
-        Top = 248
-        Width = 97
-        Height = 17
-        Caption = 'Newer V'
-        TabOrder = 13
-      end
-      object RadioButton10: TRadioButton
-        Left = 24
-        Top = 272
-        Width = 97
-        Height = 17
-        Caption = 'Newer R'
-        TabOrder = 14
-      end
-      object RadioButton11: TRadioButton
-        Left = 24
-        Top = 296
-        Width = 97
-        Height = 17
-        Caption = 'Newer I'
-        TabOrder = 15
-      end
-      object RadioButton12: TRadioButton
-        Left = 24
-        Top = 320
-        Width = 97
-        Height = 17
-        Caption = 'Newest'
-        TabOrder = 16
-      end
       object RadioButton13: TRadioButton
         Left = 24
         Top = 352
@@ -214,7 +174,7 @@ object Form1: TForm1
         Height = 17
         Hint = 'Select on Coefficients tab'
         Caption = 'Custom'
-        TabOrder = 17
+        TabOrder = 12
       end
       object IncludeRaw: TCheckBox
         Left = 16
@@ -224,7 +184,7 @@ object Form1: TForm1
         Hint = 'Include Un transformed obs with Transformed  '
         Caption = 'include raw'
         Enabled = False
-        TabOrder = 18
+        TabOrder = 13
       end
     end
     object Coefficients: TTabSheet
@@ -239,9 +199,9 @@ object Form1: TForm1
         object Label19: TLabel
           Left = 608
           Top = 16
-          Width = 27
+          Width = 36
           Height = 19
-          Caption = 'R^2'
+          Caption = 'error'
         end
         object Label20: TLabel
           Left = 440
@@ -250,19 +210,54 @@ object Form1: TForm1
           Height = 19
           Caption = 'Coefficient'
         end
-        object Label21: TLabel
-          Left = 768
-          Top = 440
-          Width = 27
+        object Label15: TLabel
+          Left = 792
+          Top = 16
+          Width = 70
           Height = 19
-          Caption = 'R^2'
+          Caption = 'Extinction'
         end
-        object Label22: TLabel
-          Left = 616
-          Top = 440
-          Width = 39
+        object Label23: TLabel
+          Left = 816
+          Top = 232
+          Width = 38
           Height = 19
-          Caption = 'const'
+          Caption = 'Error'
+        end
+        object Label24: TLabel
+          Left = 768
+          Top = 264
+          Width = 11
+          Height = 19
+          Caption = 'B'
+        end
+        object Label25: TLabel
+          Left = 768
+          Top = 296
+          Width = 11
+          Height = 19
+          Caption = 'V'
+        end
+        object Label26: TLabel
+          Left = 768
+          Top = 328
+          Width = 11
+          Height = 19
+          Caption = 'R'
+        end
+        object Label27: TLabel
+          Left = 773
+          Top = 360
+          Width = 5
+          Height = 19
+          Caption = 'I'
+        end
+        object Label28: TLabel
+          Left = 768
+          Top = 392
+          Width = 11
+          Height = 19
+          Caption = 'U'
         end
         object Label2: TCheckBox
           Left = 24
@@ -277,7 +272,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 36
+          TabOrder = 24
         end
         object Label3: TCheckBox
           Left = 24
@@ -292,7 +287,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 37
+          TabOrder = 25
         end
         object Label4: TCheckBox
           Left = 24
@@ -307,7 +302,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 38
+          TabOrder = 26
         end
         object Label5: TCheckBox
           Left = 24
@@ -322,7 +317,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 39
+          TabOrder = 27
         end
         object Label9: TCheckBox
           Left = 24
@@ -337,7 +332,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 40
+          TabOrder = 28
         end
         object Label10: TCheckBox
           Left = 24
@@ -352,7 +347,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 41
+          TabOrder = 29
         end
         object Label8: TCheckBox
           Left = 24
@@ -367,7 +362,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 42
+          TabOrder = 30
         end
         object Label12: TCheckBox
           Left = 24
@@ -382,7 +377,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 43
+          TabOrder = 31
         end
         object Label13: TCheckBox
           Left = 24
@@ -397,7 +392,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 44
+          TabOrder = 32
         end
         object Label14: TCheckBox
           Left = 24
@@ -412,67 +407,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 45
-        end
-        object Label15: TCheckBox
-          Left = 24
-          Top = 470
-          Width = 390
-          Height = 20
-          Hint = 'slope of (B-b) versus (B-V)'
-          Caption = 'Tgg'
-          Font.Charset = ANSI_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -17
-          Font.Name = 'Courier New'
-          Font.Style = []
-          ParentFont = False
-          TabOrder = 46
-        end
-        object Label16: TCheckBox
-          Left = 24
-          Top = 502
-          Width = 390
-          Height = 20
-          Hint = 'slope of (V-v) versus (V-R)'
-          Caption = 'Tvv'
-          Font.Charset = ANSI_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -17
-          Font.Name = 'Courier New'
-          Font.Style = []
-          ParentFont = False
-          TabOrder = 47
-        end
-        object Label17: TCheckBox
-          Left = 24
-          Top = 566
-          Width = 390
-          Height = 20
-          Hint = 'slope of (R-r) versus (R-I)'
-          Caption = 'Tii'
-          Font.Charset = ANSI_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -17
-          Font.Name = 'Courier New'
-          Font.Style = []
-          ParentFont = False
-          TabOrder = 48
-        end
-        object Label18: TCheckBox
-          Left = 24
-          Top = 534
-          Width = 390
-          Height = 20
-          Hint = 'slope of (V-v) versus (V-I)'
-          Caption = 'Trr'
-          Font.Charset = ANSI_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -17
-          Font.Name = 'Courier New'
-          Font.Style = []
-          ParentFont = False
-          TabOrder = 49
+          TabOrder = 33
         end
         object Label11: TCheckBox
           Left = 24
@@ -487,7 +422,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 50
+          TabOrder = 34
         end
         object Label1: TCheckBox
           Left = 24
@@ -502,7 +437,7 @@ object Form1: TForm1
           Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          TabOrder = 51
+          TabOrder = 35
         end
         object TbvEdit: TEdit
           Left = 416
@@ -528,7 +463,7 @@ object Form1: TForm1
           TabOrder = 5
           OnExit = NumericOnExit
         end
-        object TvEdit: TEdit
+        object Tv_vrEdit: TEdit
           Left = 416
           Top = 344
           Width = 121
@@ -536,7 +471,7 @@ object Form1: TForm1
           TabOrder = 9
           OnExit = NumericOnExit
         end
-        object TrEdit: TEdit
+        object Tr_riEdit: TEdit
           Left = 416
           Top = 408
           Width = 121
@@ -544,7 +479,7 @@ object Form1: TForm1
           TabOrder = 11
           OnExit = NumericOnExit
         end
-        object TbEdit: TEdit
+        object Tb_bvEdit: TEdit
           Left = 416
           Top = 248
           Width = 121
@@ -560,7 +495,7 @@ object Form1: TForm1
           TabOrder = 4
           OnExit = NumericOnExit
         end
-        object Tv__IEdit: TEdit
+        object Tv_viEdit: TEdit
           Left = 416
           Top = 376
           Width = 121
@@ -584,7 +519,7 @@ object Form1: TForm1
           TabOrder = 2
           OnExit = NumericOnExit
         end
-        object Tb__REdit: TEdit
+        object Tb_brEdit: TEdit
           Left = 416
           Top = 280
           Width = 121
@@ -592,7 +527,7 @@ object Form1: TForm1
           TabOrder = 7
           OnExit = NumericOnExit
         end
-        object Tb__IEdit: TEdit
+        object Tb_biEdit: TEdit
           Left = 416
           Top = 312
           Width = 121
@@ -600,116 +535,52 @@ object Form1: TForm1
           TabOrder = 8
           OnExit = NumericOnExit
         end
-        object TbbEdit: TEdit
-          Left = 416
-          Top = 464
-          Width = 121
-          Height = 27
-          TabOrder = 12
-          OnExit = NumericOnExit
-        end
-        object TvvEdit: TEdit
-          Left = 416
-          Top = 496
-          Width = 121
-          Height = 27
-          TabOrder = 13
-          OnExit = NumericOnExit
-        end
-        object TrrEdit: TEdit
-          Left = 416
-          Top = 528
-          Width = 121
-          Height = 27
-          TabOrder = 14
-          OnExit = NumericOnExit
-        end
-        object TiiEdit: TEdit
-          Left = 416
-          Top = 560
-          Width = 121
-          Height = 27
-          TabOrder = 15
-          OnExit = NumericOnExit
-        end
-        object rTiiEdit: TEdit
-          Left = 728
-          Top = 560
-          Width = 121
-          Height = 27
-          TabOrder = 31
-          OnExit = NumericOnExit
-        end
-        object rTrrEdit: TEdit
-          Left = 728
-          Top = 528
-          Width = 121
-          Height = 27
-          TabOrder = 30
-          OnExit = NumericOnExit
-        end
-        object rTvvEdit: TEdit
-          Left = 728
-          Top = 496
-          Width = 121
-          Height = 27
-          TabOrder = 29
-          OnExit = NumericOnExit
-        end
-        object rTbbEdit: TEdit
-          Left = 728
-          Top = 464
-          Width = 121
-          Height = 27
-          TabOrder = 28
-          OnExit = NumericOnExit
-        end
-        object rTrEdit: TEdit
+        object rTr_riEdit: TEdit
           Left = 576
           Top = 408
-          Width = 121
-          Height = 27
-          TabOrder = 27
-          OnExit = NumericOnExit
-        end
-        object rTv__IEdit: TEdit
-          Left = 576
-          Top = 376
-          Width = 121
-          Height = 27
-          TabOrder = 26
-          OnExit = NumericOnExit
-        end
-        object rTvEdit: TEdit
-          Left = 576
-          Top = 344
-          Width = 121
-          Height = 27
-          TabOrder = 25
-          OnExit = NumericOnExit
-        end
-        object rTb__IEdit: TEdit
-          Left = 576
-          Top = 312
-          Width = 121
-          Height = 27
-          TabOrder = 24
-          OnExit = NumericOnExit
-        end
-        object rTb__REdit: TEdit
-          Left = 576
-          Top = 280
           Width = 121
           Height = 27
           TabOrder = 23
           OnExit = NumericOnExit
         end
-        object rTbEdit: TEdit
+        object rTv_viEdit: TEdit
+          Left = 576
+          Top = 376
+          Width = 121
+          Height = 27
+          TabOrder = 22
+          OnExit = NumericOnExit
+        end
+        object rTv_vrEdit: TEdit
+          Left = 576
+          Top = 344
+          Width = 121
+          Height = 27
+          TabOrder = 21
+          OnExit = NumericOnExit
+        end
+        object rTb_biEdit: TEdit
+          Left = 576
+          Top = 312
+          Width = 121
+          Height = 27
+          TabOrder = 20
+          OnExit = NumericOnExit
+        end
+        object rTb_brEdit: TEdit
+          Left = 576
+          Top = 280
+          Width = 121
+          Height = 27
+          TabOrder = 19
+          OnExit = NumericOnExit
+        end
+        object rTb_bvEdit: TEdit
           Left = 576
           Top = 248
           Width = 121
           Height = 27
-          TabOrder = 22
+          TabOrder = 18
           OnExit = NumericOnExit
         end
         object rTriEdit: TEdit
@@ -717,7 +588,7 @@ object Form1: TForm1
           Top = 200
           Width = 121
           Height = 27
-          TabOrder = 21
+          TabOrder = 17
           OnExit = NumericOnExit
         end
         object rTviEdit: TEdit
@@ -725,7 +596,7 @@ object Form1: TForm1
           Top = 168
           Width = 121
           Height = 27
-          TabOrder = 20
+          TabOrder = 16
           OnExit = NumericOnExit
         end
         object rTvrEdit: TEdit
@@ -733,7 +604,7 @@ object Form1: TForm1
           Top = 136
           Width = 121
           Height = 27
-          TabOrder = 19
+          TabOrder = 15
           OnExit = NumericOnExit
         end
         object rTbiEdit: TEdit
@@ -741,7 +612,7 @@ object Form1: TForm1
           Top = 104
           Width = 121
           Height = 27
-          TabOrder = 18
+          TabOrder = 14
           OnExit = NumericOnExit
         end
         object rTbrEdit: TEdit
@@ -749,7 +620,7 @@ object Form1: TForm1
           Top = 72
           Width = 121
           Height = 27
-          TabOrder = 17
+          TabOrder = 13
           OnExit = NumericOnExit
         end
         object rTbvEdit: TEdit
@@ -757,40 +628,256 @@ object Form1: TForm1
           Top = 40
           Width = 121
           Height = 27
-          TabOrder = 16
+          TabOrder = 12
           OnExit = NumericOnExit
         end
-        object TbbConsEdit: TEdit
-          Left = 576
-          Top = 464
+        object CheckBox1: TCheckBox
+          Left = 24
+          Top = 462
+          Width = 390
+          Height = 20
+          Hint = 'slope of (V-v) versus (V-R)'
+          Caption = 'Tv'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -17
+          Font.Name = 'Courier New'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 36
+        end
+        object CheckBox2: TCheckBox
+          Left = 24
+          Top = 494
+          Width = 390
+          Height = 20
+          Hint = 'slope of (V-v) versus (V-I)'
+          Caption = 'Tv__I'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -17
+          Font.Name = 'Courier New'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 37
+        end
+        object CheckBox3: TCheckBox
+          Left = 24
+          Top = 526
+          Width = 390
+          Height = 20
+          Hint = 'slope of (R-r) versus (R-I)'
+          Caption = 'Tr'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -17
+          Font.Name = 'Courier New'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 38
+        end
+        object Tv_bvEdit: TEdit
+          Left = 416
+          Top = 456
           Width = 121
           Height = 27
-          TabOrder = 32
+          TabOrder = 39
           OnExit = NumericOnExit
         end
-        object TvvConsEdit: TEdit
+        object rTv_bvEdit: TEdit
           Left = 576
-          Top = 496
+          Top = 456
           Width = 121
           Height = 27
-          TabOrder = 33
+          TabOrder = 40
           OnExit = NumericOnExit
         end
-        object TrrConsEdit: TEdit
+        object rTr_bvEdit: TEdit
           Left = 576
-          Top = 528
+          Top = 488
           Width = 121
           Height = 27
-          TabOrder = 34
+          TabOrder = 41
           OnExit = NumericOnExit
         end
-        object TiiConsEdit: TEdit
+        object rTi_bvEdit: TEdit
           Left = 576
-          Top = 560
+          Top = 520
           Width = 121
           Height = 27
-          TabOrder = 35
+          TabOrder = 42
           OnExit = NumericOnExit
+        end
+        object Ti_bvEdit: TEdit
+          Left = 416
+          Top = 520
+          Width = 121
+          Height = 27
+          TabOrder = 43
+          OnExit = NumericOnExit
+        end
+        object Tr_bvEdit: TEdit
+          Left = 416
+          Top = 488
+          Width = 121
+          Height = 27
+          TabOrder = 44
+          OnExit = NumericOnExit
+        end
+        object EuEdit: TEdit
+          Left = 784
+          Top = 168
+          Width = 121
+          Height = 27
+          TabOrder = 45
+          OnExit = NumericOnExit
+        end
+        object EiEdit: TEdit
+          Left = 784
+          Top = 136
+          Width = 121
+          Height = 27
+          TabOrder = 46
+          OnExit = NumericOnExit
+        end
+        object ErEdit: TEdit
+          Left = 784
+          Top = 104
+          Width = 121
+          Height = 27
+          TabOrder = 47
+          OnExit = NumericOnExit
+        end
+        object EvEdit: TEdit
+          Left = 784
+          Top = 72
+          Width = 121
+          Height = 27
+          TabOrder = 48
+          OnExit = NumericOnExit
+        end
+        object EbEdit: TEdit
+          Left = 784
+          Top = 40
+          Width = 121
+          Height = 27
+          TabOrder = 49
+          OnExit = NumericOnExit
+        end
+        object rEbEdit: TEdit
+          Left = 792
+          Top = 256
+          Width = 121
+          Height = 27
+          TabOrder = 50
+          OnExit = NumericOnExit
+        end
+        object rEvEdit: TEdit
+          Left = 792
+          Top = 288
+          Width = 121
+          Height = 27
+          TabOrder = 51
+          OnExit = NumericOnExit
+        end
+        object rErEdit: TEdit
+          Left = 792
+          Top = 320
+          Width = 121
+          Height = 27
+          TabOrder = 52
+          OnExit = NumericOnExit
+        end
+        object rEiEdit: TEdit
+          Left = 792
+          Top = 352
+          Width = 121
+          Height = 27
+          TabOrder = 53
+          OnExit = NumericOnExit
+        end
+        object rEuEdit: TEdit
+          Left = 792
+          Top = 384
+          Width = 121
+          Height = 27
+          TabOrder = 54
+          OnExit = NumericOnExit
+        end
+        object CheckBox4: TCheckBox
+          Left = 736
+          Top = 46
+          Width = 41
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'B'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -17
+          Font.Name = 'Courier New'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 55
+        end
+        object CheckBox5: TCheckBox
+          Left = 736
+          Top = 78
+          Width = 41
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'V'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -17
+          Font.Name = 'Courier New'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 56
+        end
+        object CheckBox6: TCheckBox
+          Left = 736
+          Top = 110
+          Width = 41
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'R'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -17
+          Font.Name = 'Courier New'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 57
+        end
+        object CheckBox7: TCheckBox
+          Left = 736
+          Top = 142
+          Width = 41
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'I'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -17
+          Font.Name = 'Courier New'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 58
+        end
+        object CheckBox8: TCheckBox
+          Left = 736
+          Top = 174
+          Width = 41
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'U'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -17
+          Font.Name = 'Courier New'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 59
         end
       end
     end
@@ -811,6 +898,15 @@ object Form1: TForm1
         ScrollBars = ssBoth
         TabOrder = 0
         WordWrap = False
+      end
+      object Button2: TButton
+        Left = 400
+        Top = 8
+        Width = 75
+        Height = 25
+        Caption = 'Button2'
+        TabOrder = 1
+        OnClick = Button2Click
       end
     end
     object TabSheet2: TTabSheet
@@ -1021,6 +1117,15 @@ object Form1: TForm1
       end
     end
   end
+  object Button1: TButton
+    Left = 552
+    Top = 32
+    Width = 75
+    Height = 25
+    Caption = 'Button1'
+    TabOrder = 1
+    OnClick = Button1Click
+  end
   object MainMenu1: TMainMenu
     Left = 188
     Top = 614
@@ -1054,8 +1159,8 @@ object Form1: TForm1
     DesignFormHeight = 719
     DesignFormClientWidth = 1016
     DesignFormClientHeight = 661
-    DesignFormLeft = 275
-    DesignFormTop = 146
+    DesignFormLeft = 309
+    DesignFormTop = 149
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -17
@@ -1078,5 +1183,24 @@ object Form1: TForm1
     Title = 'Un-transformed observations'
     Left = 68
     Top = 614
+  end
+  object HttpCli1: THttpCli
+    LocalAddr = '0.0.0.0'
+    Agent = 'Mozilla/4.0 (compatible; ICS)'
+    Accept = 'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*'
+    NoCache = False
+    ContentTypePost = 'application/x-www-form-urlencoded'
+    MultiThreaded = False
+    RequestVer = '1.0'
+    FollowRelocation = True
+    LocationChangeMaxCount = 5
+    BandwidthLimit = 10000
+    BandwidthSampling = 1000
+    Options = []
+    OnDocBegin = HttpCli1DocBegin
+    OnDocEnd = HttpCli1DocEnd
+    SocksAuthentication = socksNoAuthentication
+    Left = 36
+    Top = 574
   end
 end
