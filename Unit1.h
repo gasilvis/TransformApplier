@@ -87,13 +87,8 @@ __published:	// IDE-managed Components
    TRadioButton *RadioButton1;
    TRadioButton *RadioButton2;
    TRadioButton *RadioButton3;
-   TRadioButton *RadioButton4;
-   TRadioButton *RadioButton5;
-   TRadioButton *RadioButton6;
-   TRadioButton *RadioButton7;
    TCheckBox *Label11;
    TCheckBox *Label1;
-   TRadioButton *RadioButton13;
    TCheckBox *IncludeRaw;
    TCheckBox *CheckBox1;
    TCheckBox *CheckBox2;
@@ -129,6 +124,18 @@ __published:	// IDE-managed Components
    TButton *Button1;
    THttpCli *HttpCli1;
    TButton *Button2;
+   TButton *Button3;
+   TButton *Button4;
+   TCheckBox *CheckBox9;
+   TCheckBox *CheckBox10;
+   TCheckBox *CheckBox11;
+   TEdit *Tr_vrEdit;
+   TEdit *rTr_vrEdit;
+   TEdit *rTr_viEdit;
+   TEdit *rTi_viEdit;
+   TEdit *Ti_viEdit;
+   TEdit *Tr_viEdit;
+   TCheckBox *applyExtinction;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -141,6 +148,8 @@ __published:	// IDE-managed Components
    void __fastcall HttpCli1DocBegin(TObject *Sender);
    void __fastcall HttpCli1DocEnd(TObject *Sender);
    void __fastcall Button2Click(TObject *Sender);
+   void __fastcall Button3Click(TObject *Sender);
+   void __fastcall Button4Click(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
