@@ -113,6 +113,7 @@ float rTbv, rTbr,   rTbi,   rTvr, rTvi,   rTri
 
 // global vars for equations
 float Bs, bs, Vs, vs, Rs, rs, Is, is,    Bc, bc, Vc, vc, Rc, rc, Ic, ic,    oBs, oVs, oRs, oIs;
+float rBs, rbs, rVs, rvs, rRs, rrs, rIs, ris,    rBc, rbc, rVc, rvc, rRc, rrc, rIc, ric,    roBs, roVs, roRs, roIs;
 
 float* Extinction[]= { &Eb, &Ev, &Er, &Ei, &Eu }; // filter order
 
@@ -281,6 +282,7 @@ typedef struct StarData { // eg
    float       VMAGex;  // corrected for extinction
    float       VMAG;    // final
    float       VMAGt; // transformed magnitude
+   float       VMAGrep;
    float       VERR;    //
    AnsiString  FILT;  /*
     * U: Johnson U
@@ -559,8 +561,8 @@ AnsiString FILTC_desc[FILTC_NUM][FILTC_desc_rows]= {
     ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is as observed"
     ,"#  Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc))"
     ,"#  Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc))"
-    ,"#  Rs = rs + (Rc-rc) + Tr_bv * ((Bs-Vs)-(Bc-Vc))"
-    ,"#  Is = is + (Ic-ic) + Ti_bv * ((Bs-Vs)-(Bc-Vc))"
+    ,"#  Rs = rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic))"
+    ,"#  Is = is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic))"
     ,NULL
    }
    ,
@@ -691,7 +693,6 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 //               ShowMessage(" missed CREFMAG");     EConvertError
             }
          }
-
 
       } else { // data line
          if(sdi==sdiMAX) {
@@ -832,24 +833,26 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          sd[sdi].NOTES= s.SubString(k, 100);
 
+         // get CREFMAG
+         if(crefmag==-999) {
+            if(!getCREFMAG(&sd[sdi])) {
+               sd[sdi].ErrorMsg+= " No CREFMAG available.";
+               sd[sdi].processed= true;
+               break;  // skip record
+            }
+         } else {
+            sd[sdi].CREFmag= crefmag;
+            sd[sdi].CREFerror= creferror;
+         }
+
+         if(sd[sdi].CREFmag == 0) {
+            sd[sdi].ErrorMsg+= " CREFMAG is 0.";
+            sd[sdi].processed= true;
+         }
+
          // correct VMAG from AIPWIN reported value to observed value
          if(sd[sdi].MTYPE == 'A' || sd[sdi].MTYPE == 'S') { // "ABS" or "STD"
-            if(crefmag==-999) {
-               if(!getCREFMAG(&sd[sdi])) {
-                  sd[sdi].ErrorMsg+= " No CREFMAG available.";
-                  sd[sdi].processed= true;
-                  break;  // skip record
-               }
-            } else {
-               sd[sdi].CREFmag= crefmag;
-               sd[sdi].CREFerror= creferror;
-            }
-            if(sd[sdi].CREFmag == 0) {
-               sd[sdi].ErrorMsg+= " CREFMAG is 0.";
-               sd[sdi].processed= true;
-            } else
-               sd[sdi].VMAGzp= sd[sdi].VMAGraw + sd[sdi].CMAGraw - sd[sdi].CREFmag;
-
+            sd[sdi].VMAGzp= sd[sdi].VMAGraw + sd[sdi].CMAGraw - sd[sdi].CREFmag;
          } else { //if(sd[sdi].MTYPE == 'D') { // "DIF"
             sd[sdi].VMAGzp= sd[sdi].VMAGraw + sd[sdi].CMAGraw;
          }
@@ -857,11 +860,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          // apply Extinction correction
          if(applyExtinction->Checked) {
             sd[sdi].CMAGex= sd[sdi].CMAGraw - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
-            sd[sdi].VMAGex= sd[sdi].VMAGzp - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
+            sd[sdi].VMAGex= sd[sdi].VMAGzp  - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
          } else {
-            sd[sdi].CMAGex= sd[sdi].CMAGraw;// - Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
-            sd[sdi].VMAGex= sd[sdi].VMAGzp;// - Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
+            sd[sdi].CMAGex= sd[sdi].CMAGraw;
+            sd[sdi].VMAGex= sd[sdi].VMAGzp;
          }
+         // corrections done
          sd[sdi].CMAG= sd[sdi].CMAGex;
          sd[sdi].VMAG= sd[sdi].VMAGex;
 
@@ -916,6 +920,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 // Form1->Memo2->Lines->Add(as.sprintf("I= %i, fc= %i", i, fc));
 
             ProcessStarData(&sd[i], fc); // sets processed flag
+            if(sd[i].MTYPE == 'A' || sd[i].MTYPE == 'S') { // "ABS" or "STD"
+               sd[i].VMAGrep= ( sd[i].VMAGt - sd[i].CMAG ) + sd[i].CREFmag;
+            } else { // "DIF"
+               sd[i].VMAGrep= sd[i].VMAGt - sd[i].CMAG;
+            }
+
             // capture the group data
             if(gdi==gdiMAX) {
                ShowMessage("Too many groups in the file.");
@@ -943,7 +953,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 //   Memo4->Lines->Clear(); // report window
    Memo4->Lines->Add(" "); // blank line
    Memo4->Lines->Add(Formula);
-   Memo4->Lines->Add("Star                 Date   Filter  Grp    Vmag   TranMag     diff");
+   Memo4->Lines->Add("Star                 Date   Filter  Grp    Vraw      Vzp      Vex    TranMag      diff     Vrep");
    // build
    for(i= 0, j= 0; i< Memo1->Lines->Count; i++) {
       s= Memo1->Lines->Strings[i];
@@ -1002,16 +1012,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             s+= FormatFloat("#.00000", sd[j].DATE)+ delim;
 
             // all the same...
-            if(sd[j].MTYPE == 'A') { // "ABS"
-               s+= FormatFloat("0.000", sd[j].VMAGt)+ delim;
-            } else { // "DIF" or STD
-               s+= FormatFloat("0.000", sd[j].VMAGt)+ delim;
-            }
-
+            s+= FormatFloat("0.000", sd[j].VMAGrep)+ delim;
             s+= FormatFloat("0.000", sd[j].VERR)+ delim;    // ???
-
             s+= sd[j].FILT+ delim;
-
             s+= sd[j].TRANS? "YES": "NO";
             s+= delim;
 
@@ -1046,7 +1049,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             Memo2->Lines->Add(s);
 
             // add a star report line
-            r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %10.5f", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs, sd[j].VMAGraw, sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAGraw);
+            r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f  %8.3f %10.5f %8.3f ", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
+                                  , sd[j].VMAGraw, sd[j].VMAGzp, sd[j].VMAG, sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep);
             Memo4->Lines->Add(r);
 
             // add info about the analysis
@@ -1085,9 +1089,13 @@ void SetStarData(StarData d)
    }
 }
 
+float fTxy (char x, char y, float Txy, int mode);
+float fTx_yz (char x, char y, char z, float Tx_yz, int mode);
+
 void ProcessStarData(StarData *d, unsigned short fc)
 {
    AnsiString as;
+   float x;
    d->TRANS= true;
    d->FILTC= fc;  // which combination used
    switch(fc) {
@@ -1129,8 +1137,8 @@ void ProcessStarData(StarData *d, unsigned short fc)
          break;
 
       case (FILTC_BVRIa):
-         if(Tb_bv==0 || Tv_bv==0 || Tr_bv==0 || Ti_bv==0) {
-            d->ErrorMsg+= " Missing a coefficient; need Tb_bv, Tv_bv, Tr_bv and Ti_bv.";
+         if(Tb_bv==0 || Tv_bv==0 || Tr_vi==0 || Ti_vi==0) {
+            d->ErrorMsg+= " Missing a coefficient; need Tb_bv, Tv_bv, Tr_vi and Ti_vi.";
             d->TRANS= false;
             break;
          }
@@ -1139,12 +1147,32 @@ void ProcessStarData(StarData *d, unsigned short fc)
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            Rs = rs + (Rc-rc) + Tr_bv * ((Bs-Vs)-(Bc-Vc));
-            Is = is + (Ic-ic) + Ti_bv * ((Bs-Vs)-(Bc-Vc));
+            Rs = rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
+            Is = is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BVIR AAVSI using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
+
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
+         do {
+            roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
+            //Bs =            bs +     ( Bc-        bc) + Tb_bv * ((      Bs-        Vs)-(      Bc-        Vc));
+            x= (Bs-Vs)-(Bc-Vc);
+            rBs= sqrt( pow(rbs,2)+pow(rBc,2)+pow(rbc,2)+   pow(Tb_bv*x,2) * ( pow(rTb_bv/Tb_bv,2 ) +  (pow(rBs,2)+pow(rVs,2)+pow(rBc,2)+pow(rVc,2))/pow(x,2))  );
+            //Vs =          vs +      (Vc-        vc) +       Tv_bv *                                     ((Bs-Vs)-(Bc-Vc));
+            x= (Bs-Vs)-(Bc-Vc);
+            rVs= sqrt( pow(rvs,2)+pow(rVc,2)+pow(rvc,2)+   pow(Tv_bv*x,2) * ( pow(rTv_bv/Tv_bv,2 ) +  (pow(rBs,2)+pow(rVs,2)+pow(rBc,2)+pow(rVc,2))/pow(x,2))  );
+            //Rs =          rs + (     Rc-        rc) +        Tr_vi *                                ((    Vs-        Is)-(      Vc-        Ic));
+            x= (Vs-Is)-(Vc-Ic);
+            rRs= sqrt( pow(rrs,2)+pow(rRc,2)+pow(rrc,2)+   pow(Tr_vi*x,2) * ( pow(rTr_vi/Tr_vi,2 ) +  (pow(rVs,2)+pow(rIs,2)+pow(rVc,2)+pow(rIc,2))/pow(x,2))  );
+            //Is =          is + (     Ic-        ic) +        Ti_vi * ((Vs-Is)-(Vc-Ic));
+            x= (Vs-Is)-(Vc-Ic);
+            rIs= sqrt( pow(ris,2)+pow(rIc,2)+pow(ric,2)+   pow(Ti_vi*x,2) * ( pow(rTi_vi/Ti_vi,2 ) +  (pow(rVs,2)+pow(rIs,2)+pow(rVc,2)+pow(rIc,2))/pow(x,2))  );
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+         } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
+
+
          break;
 
 
@@ -1410,8 +1438,8 @@ Process:
    - get DELIMT
    - pick up CREFMAG if available
    - collect obs data so that VMAG is observerd
-      if ABS then VMAG+= CMAG - CREFMAG
-      if DIF then VMAG+= CMAG
+      if ABS or STD then VMAG+= CMAG - CREFMAG
+      if DIF        then VMAG+= CMAG
 
       */
 
@@ -1673,5 +1701,67 @@ void __fastcall TForm1::Button4Click(TObject *Sender)
    Memo1->Clear();
 }
 //---------------------------------------------------------------------------
+
+
+
+
+float fTxy (char x, char y, float Txy, int mode) {
+     // Secondary or Color form:  Txy
+     //  1/slope of (x-y) vs (X-Y) :
+     //    Txy= ((Xs-Ys)-(Xc-Yc)) / ((xs-ys)-(xc-yc))
+     float Xs, xs, Xc, xc, Ys, ys, Yc, yc, r;
+
+    switch(x) {
+       case 'b': Xs= Bs; xs= bs; Xc= Bc; xc= bc; break;
+       case 'v': Xs= Vs; xs= vs; Xc= Vc; xc= vc; break;
+       case 'r': Xs= Rs; xs= rs; Xc= Rc; xc= rc; break;
+       case 'i': Xs= Is; xs= is; Xc= Ic; xc= ic; break;
+    }
+    switch(y) {
+       case 'b': Ys= Bs; ys= bs; Yc= Bc; yc= bc; break;
+       case 'v': Ys= Vs; ys= vs; Yc= Vc; yc= vc; break;
+       case 'r': Ys= Rs; ys= rs; Yc= Rc; yc= rc; break;
+       case 'i': Ys= Is; ys= is; Yc= Ic; yc= ic; break;
+    }
+
+    switch(mode) {
+       case 1: r= Xs=  Ys + (Xc-Yc) +  Txy * ((xs-ys)-(xc-yc));   break;
+       case 2: r= Ys=  Xs - (Xc-Yc) -  Tbv * ((xs-ys)-(xc-yc));   break;
+    }
+    return r;
+}
+
+float fTx_yz (char x, char y, char z, float Tx_yz, int mode) {
+    //Primary or star form:  Tx_yz
+    //  slope of (X-x) vs (Y-Z) :
+    //  Tx_yz= ((Xs-xs)-(Xc-xc)) / ((Ys-Zs)-(Yc-Zc))
+    float Xs, xs, Xc, xc, Ys, ys, Yc, yc, Zs, zs, Zc, zc, r;
+
+    switch(x) {
+       case 'b': Xs= Bs; xs= bs; Xc= Bc; xc= bc; break;
+       case 'v': Xs= Vs; xs= vs; Xc= Vc; xc= vc; break;
+       case 'r': Xs= Rs; xs= rs; Xc= Rc; xc= rc; break;
+       case 'i': Xs= Is; xs= is; Xc= Ic; xc= ic; break;
+    }
+    switch(y) {
+       case 'b': Ys= Bs;  Yc= Bc;  break;
+       case 'v': Ys= Vs;  Yc= Vc;  break;
+       case 'r': Ys= Rs;  Yc= Rc;  break;
+       case 'i': Ys= Is;  Yc= Ic;  break;
+    }
+    switch(z) {
+       case 'b': Zs= Bs;  Zc= Bc;  break;
+       case 'v': Zs= Vs;  Zc= Vc;  break;
+       case 'r': Zs= Rs;  Zc= Rc;  break;
+       case 'i': Zs= Is;  Zc= Ic;  break;
+    }
+
+    switch(mode) {
+      case 1: r= Xs= xs + (Xc-xc) + Tx_yz * ((Ys-Zs)-(Yc-Zc));  break;
+      case 2: r= Ys= Zs - (Yc-Zc) + ((Xs-xs)-(Xc-xc)) / Tx_yz;  break;
+      case 3: r= Zs= Ys + (Yc-Zc) + ((Xs-xs)-(Xc-xc)) / Tx_yz;  break;
+    }
+    return r;
+}
 
 
