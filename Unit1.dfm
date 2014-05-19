@@ -986,6 +986,7 @@ object Form1: TForm1
           Height = 17
           Caption = 'apply'
           TabOrder = 69
+          OnExit = applyExtinctionExit
         end
       end
       object setupEdit: TEdit

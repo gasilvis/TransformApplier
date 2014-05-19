@@ -153,6 +153,7 @@ __published:	// IDE-managed Components
    void __fastcall Button3Click(TObject *Sender);
    void __fastcall Button4Click(TObject *Sender);
    void __fastcall setupEditExit(TObject *Sender);
+   void __fastcall applyExtinctionExit(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
