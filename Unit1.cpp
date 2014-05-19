@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.00
+#define Version  2.01
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -66,6 +66,8 @@ enum {
    ,FILT_Ui
    ,FILT_NUM
 };
+
+char b= 'b', v= 'v', r= 'r', i= 'i', u= 'u';
 
 enum { // mask values
    FILT_Bx= 0x01
@@ -188,6 +190,8 @@ void __fastcall TForm1::ReadCoefficients(TObject *Sender)
    TIniFile *ini;
    ini = new TIniFile(ChangeFileExt( Application->ExeName, ".INI" ) );
    AnsiString as;
+
+   setupEdit->Text= ini->ReadString("Description", "name", "Describe the setup that has the coefficients below");
    for(int i= 0; i< NumCoef; i++) {
       as.sprintf("%-8s %s", TC[i].name, TC[i].coefhint);
       TC[i].coeflab->Caption= as; TC[i].name;
@@ -204,7 +208,7 @@ void __fastcall TForm1::ReadCoefficients(TObject *Sender)
       EC[i].coeflab->Caption= as; EC[i].name;
       EC[i].coeflab->Hint= EC[i].coefhint;
       EC[i].coefedit->Hint= EC[i].coefhint;
-      *EC[i].value= ini->ReadFloat("Extinction", EC[i].name, 1.0);
+      *EC[i].value= ini->ReadFloat("Extinction", EC[i].name, 0.0);
       EC[i].coefedit->Text= FormatFloat("0.0000", *EC[i].value);
       *EC[i].error= ini->ReadFloat("ExtinctionError", EC[i].name, 0.0);
       EC[i].erroredit->Text= FormatFloat("0.0000", *EC[i].error);
@@ -247,6 +251,18 @@ void __fastcall TForm1::NumericOnExit(TObject *Sender)
       ShowMessage("This field must be numeric");
    }
 }
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::setupEditExit(TObject *Sender)
+{
+      TIniFile *ini;
+      ini = new TIniFile(ChangeFileExt( Application->ExeName, ".INI" ) );
+      ini->WriteString("Description", "name", setupEdit->Text);
+      delete ini;
+      ReadCoefficients(Sender); // resets ram data
+
+}
+//---------------------------------------------------------------------------
 
 /*  example   of file
 
@@ -283,7 +299,8 @@ typedef struct StarData { // eg
    float       VMAG;    // final
    float       VMAGt; // transformed magnitude
    float       VMAGrep;
-   float       VERR;    //
+   float       VERR;    // raw
+   float       VERRt;   // transformed
    AnsiString  FILT;  /*
     * U: Johnson U
     * B: Johnson B
@@ -304,7 +321,7 @@ typedef struct StarData { // eg
    float       CMAGraw; // from the file
    float       CMAGex;  // corrected for extinction
    float       CMAG;    // final
-   float       CERROR;
+   float       CERR;
    AnsiString  KNAME; // 000-BBV-175
    float       KMAG;  // 18.627
    float       AMASS; // 1.2606
@@ -315,7 +332,7 @@ typedef struct StarData { // eg
    bool        processed;
    char        filter;// index into filter list
    float       CREFmag; // reference magnitude of the comparison star
-   float       CREFerror;
+   float       CREFerr;
    unsigned short FILTC; // filter combination the star is mixed in with
    AnsiString  StarsUsed;
    AnsiString  ErrorMsg;   // collect comments here to be displayed after the obs is printed
@@ -340,7 +357,7 @@ void ProcessStarData(StarData *d, unsigned short fc);
 // stuff for fetching std data from the web
 typedef struct  {
     float   mag;
-    float   error;
+    float   err;
 } sdatas;
 
 typedef struct  {
@@ -482,13 +499,24 @@ AnsiString FILTC_desc[FILTC_NUM][FILTC_desc_rows]= {
     ,NULL
    }
 
-
+/*
    ,
    {   // FILTC_BVRIs
      "# BVRI special "
     ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is as observed"
     ,"#  Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc))"
     ,"#  Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc))"
+    ,"#  Rs = Vs - (Vc-Rc) - Tvr* ((vs-rs)-(vc-rc))"
+    ,"#  Is = Rs - (Rc-Ic) - Tri* ((rs-is)-(rc-ic))"
+    ,NULL
+   }
+*/
+   ,
+   {   // FILTC_BVRIs
+     "# BVRI special "
+    ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is as observed"
+    ,"#  Bs=  Vs + (Bc-Vc) + Tbv * ((bs-vs)-(bc-vc))"
+    ,"#  Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Vc-Vc))"
     ,"#  Rs = Vs - (Vc-Rc) - Tvr* ((vs-rs)-(vc-rc))"
     ,"#  Is = Rs - (Rc-Ic) - Tri* ((rs-is)-(rc-ic))"
     ,NULL
@@ -638,7 +666,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 {
    char delim= ';';
    unsigned short fc; // filter combo and index
-   float crefmag= -999, x, creferror;
+   float crefmag= -999, x, creferr;
    int i, j, k, m, sdi= 0, gdi= 0;
    AnsiString s, r, sx;
 
@@ -687,7 +715,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             // tbd  other cases: named variable "tab" or "comma"
          } else
          if(s.SubString(2, 8)== "CREFMAG=") {
-            if(2 != sscanf(s.SubString(10, s.Length()-10).c_str(),"%f %f",  &crefmag, &creferror)) {
+            if(2 != sscanf(s.SubString(10, s.Length()-10).c_str(),"%f %f",  &crefmag, &creferr)) {
                 crefmag=  -999;
             //crefmag= s.SubString(10, 20).ToDouble();
 //               ShowMessage(" missed CREFMAG");     EConvertError
@@ -807,7 +835,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                if(sd[sdi].CNAME==sd[i].CNAME) { // same star
                   if(sd[sdi].filter==sd[i].filter) { // same filter
                      crefmag= sd[i].CREFmag;
-                     creferror= sd[i].CREFerror;
+                     creferr= sd[i].CREFerr;
                      break;
                   }
                }
@@ -842,7 +870,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             }
          } else {
             sd[sdi].CREFmag= crefmag;
-            sd[sdi].CREFerror= creferror;
+            sd[sdi].CREFerr= creferr;
          }
 
          if(sd[sdi].CREFmag == 0) {
@@ -868,6 +896,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          // corrections done
          sd[sdi].CMAG= sd[sdi].CMAGex;
          sd[sdi].VMAG= sd[sdi].VMAGex;
+
+         // todo VERR, CERR,
+         sd[sdi].CERR= 0; // same error as vmag, fully correlated
 
          crefmag= -999; // clear crefmag
 
@@ -921,7 +952,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
             ProcessStarData(&sd[i], fc); // sets processed flag
             if(sd[i].MTYPE == 'A' || sd[i].MTYPE == 'S') { // "ABS" or "STD"
-               sd[i].VMAGrep= ( sd[i].VMAGt - sd[i].CMAG ) + sd[i].CREFmag;
+               sd[i].VMAGrep= ( sd[i].VMAGt - sd[i].CMAG ) + sd[i].CREFmag;  //todo not for transformed data
             } else { // "DIF"
                sd[i].VMAGrep= sd[i].VMAGt - sd[i].CMAG;
             }
@@ -953,7 +984,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 //   Memo4->Lines->Clear(); // report window
    Memo4->Lines->Add(" "); // blank line
    Memo4->Lines->Add(Formula);
-   Memo4->Lines->Add("Star                 Date   Filter  Grp    Vraw      Vzp      Vex    TranMag      diff     Vrep");
+   Memo4->Lines->Add("Star                 Date   Filter  Grp    Vraw      Vzp      Vex    TranMag      diff     Vrep      VERR    VERRt");
    // build
    for(i= 0, j= 0; i< Memo1->Lines->Count; i++) {
       s= Memo1->Lines->Strings[i];
@@ -1049,8 +1080,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             Memo2->Lines->Add(s);
 
             // add a star report line
-            r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f  %8.3f %10.5f %8.3f ", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
-                                  , sd[j].VMAGraw, sd[j].VMAGzp, sd[j].VMAG, sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep);
+            r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f  %8.3f %10.5f %8.3f  %8.3f %8.3f", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
+                                  , sd[j].VMAGraw, sd[j].VMAGzp, sd[j].VMAG, sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep, sd[j].VERR, sd[j].VERRt);
             Memo4->Lines->Add(r);
 
             // add info about the analysis
@@ -1082,15 +1113,19 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 void SetStarData(StarData d)
 {
    switch(d.filter) {
-      case FILT_Bi: bs= d.VMAG; bc= d.CMAG; Bc= d.CREFmag; break;
-      case FILT_Vi: vs= d.VMAG; vc= d.CMAG; Vc= d.CREFmag; break;
-      case FILT_Ri: rs= d.VMAG; rc= d.CMAG; Rc= d.CREFmag; break;
-      case FILT_Ii: is= d.VMAG; ic= d.CMAG; Ic= d.CREFmag; break;
+      case FILT_Bi: bs= d.VMAG; bc= d.CMAG; Bc= d.CREFmag;
+                    rbs= d.VERR; rbc= d.CERR; rBc= d.CREFerr; break;
+      case FILT_Vi: vs= d.VMAG; vc= d.CMAG; Vc= d.CREFmag;
+                    rvs= d.VERR; rvc= d.CERR; rVc= d.CREFerr; break;
+      case FILT_Ri: rs= d.VMAG; rc= d.CMAG; Rc= d.CREFmag;
+                    rrs= d.VERR; rrc= d.CERR; rRc= d.CREFerr; break;
+      case FILT_Ii: is= d.VMAG; ic= d.CMAG; Ic= d.CREFmag;
+                    ris= d.VERR; ric= d.CERR; rIc= d.CREFerr; break;
    }
 }
 
-float fTxy (char x, char y, float Txy, int mode);
-float fTx_yz (char x, char y, char z, float Tx_yz, int mode);
+float fTxy   (char x, char y,         float Txy,   float rTxy,   int mode);
+float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode);
 
 void ProcessStarData(StarData *d, unsigned short fc)
 {
@@ -1112,8 +1147,8 @@ void ProcessStarData(StarData *d, unsigned short fc)
          d->StarsUsed= "# BVIR Classic using: B @ "+ sd[sf[FILT_Bi]].DATEs
             + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          break;
-
-      case (FILTC_BVRIs):
+    /*
+      case (FILTC_BVRIs): // mine
          if(Tbv==0 || Tvr==0 || Tri==0 || Tb_bv==0) {
             d->ErrorMsg+= " Missing a coefficient; need Tbv, Tvr, Tri and Tb_bv.";
             d->TRANS= false;
@@ -1135,6 +1170,25 @@ void ProcessStarData(StarData *d, unsigned short fc)
          d->StarsUsed= "# BVIR special using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          break;
+     */
+      case (FILTC_BVRIs):  // Arne's
+         if(Tbv==0 || Tvr==0 || Tri==0 || Tv_bv==0) {
+            d->ErrorMsg+= " Missing a coefficient; need Tbv, Tvr, Tri and Tv_bv.";
+            d->TRANS= false;
+            break;
+         }
+         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         do {
+            oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
+            Bs = fTxy( b, v, Tbv, rTbv, 1);
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1);
+            Rs = fTxy( v, r, Tvr, rTvr, 2);
+            Is = fTxy( r, i, Tri, rTri, 2);
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+         } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
+         d->StarsUsed= "# BVIR Arne special using: B @ "+ sd[sf[FILT_Bi]].DATEs
+           + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
+         break;
 
       case (FILTC_BVRIa):
          if(Tb_bv==0 || Tv_bv==0 || Tr_vi==0 || Ti_vi==0) {
@@ -1145,10 +1199,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is;
          do {
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
-            Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            Rs = rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
-            Is = is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
+            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
+            Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
+            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BVIR AAVSI using: B @ "+ sd[sf[FILT_Bi]].DATEs
@@ -1157,18 +1211,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
          do {
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            //Bs =            bs +     ( Bc-        bc) + Tb_bv * ((      Bs-        Vs)-(      Bc-        Vc));
-            x= (Bs-Vs)-(Bc-Vc);
-            rBs= sqrt( pow(rbs,2)+pow(rBc,2)+pow(rbc,2)+   pow(Tb_bv*x,2) * ( pow(rTb_bv/Tb_bv,2 ) +  (pow(rBs,2)+pow(rVs,2)+pow(rBc,2)+pow(rVc,2))/pow(x,2))  );
-            //Vs =          vs +      (Vc-        vc) +       Tv_bv *                                     ((Bs-Vs)-(Bc-Vc));
-            x= (Bs-Vs)-(Bc-Vc);
-            rVs= sqrt( pow(rvs,2)+pow(rVc,2)+pow(rvc,2)+   pow(Tv_bv*x,2) * ( pow(rTv_bv/Tv_bv,2 ) +  (pow(rBs,2)+pow(rVs,2)+pow(rBc,2)+pow(rVc,2))/pow(x,2))  );
-            //Rs =          rs + (     Rc-        rc) +        Tr_vi *                                ((    Vs-        Is)-(      Vc-        Ic));
-            x= (Vs-Is)-(Vc-Ic);
-            rRs= sqrt( pow(rrs,2)+pow(rRc,2)+pow(rrc,2)+   pow(Tr_vi*x,2) * ( pow(rTr_vi/Tr_vi,2 ) +  (pow(rVs,2)+pow(rIs,2)+pow(rVc,2)+pow(rIc,2))/pow(x,2))  );
-            //Is =          is + (     Ic-        ic) +        Ti_vi * ((Vs-Is)-(Vc-Ic));
-            x= (Vs-Is)-(Vc-Ic);
-            rIs= sqrt( pow(ris,2)+pow(rIc,2)+pow(ric,2)+   pow(Ti_vi*x,2) * ( pow(rTi_vi/Ti_vi,2 ) +  (pow(rVs,2)+pow(rIs,2)+pow(rVc,2)+pow(rIc,2))/pow(x,2))  );
+            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
+            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
+            rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11);
+            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
 
@@ -1387,12 +1433,20 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is;
          do {
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
-            Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            Is = is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
+            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
+            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
+         do {
+            roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
+            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
+            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
+            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11);
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+         } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
 
@@ -1411,10 +1465,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
 
    if(d->TRANS) {
       switch(d->filter) {
-         case FILT_Bi: d->VMAGt= Bs; break;
-         case FILT_Vi: d->VMAGt= Vs; break;
-         case FILT_Ri: d->VMAGt= Rs; break;
-         case FILT_Ii: d->VMAGt= Is; break;
+         case FILT_Bi: d->VMAGt= Bs; d->VERRt= rBs; break;
+         case FILT_Vi: d->VMAGt= Vs; d->VERRt= rVs; break;
+         case FILT_Ri: d->VMAGt= Rs; d->VERRt= rRs; break;
+         case FILT_Ii: d->VMAGt= Is; d->VERRt= rIs; break;
       }
    }
    d->processed= true;
@@ -1530,10 +1584,10 @@ int __fastcall checkChart(StarData* sd) {
     // did we find it?
     if(i != min(chartnext, chartMAX)) { // yes
        sd->CREFmag= chart[i].sdata[sd->filter].mag;
-       sd->CREFerror= chart[i].sdata[sd->filter].error;
+       sd->CREFerr= chart[i].sdata[sd->filter].err;
     } else if(labelCnt == 1) { // found unique label
        sd->CREFmag= chart[labelIndex].sdata[sd->filter].mag;
-       sd->CREFerror= chart[labelIndex].sdata[sd->filter].error;
+       sd->CREFerr= chart[labelIndex].sdata[sd->filter].err;
     } else if(labelCnt > 1) {
        sd->ErrorMsg+= "duplicate label in chart.";
        ret= -1;
@@ -1552,14 +1606,14 @@ void __fastcall TForm1::Button2Click(TObject *Sender)
    sd.filter= 2;
    getCREFMAG(&sd);
 
-   s.printf("%f %f", sd.CREFmag, sd.CREFerror);
+   s.printf("%f %f", sd.CREFmag, sd.CREFerr);
    Memo4->Lines->Add(s );
    Memo4->Lines->Add(sd.ErrorMsg);
 
    sd.filter= 3;
    getCREFMAG(&sd);
 
-   s.printf("%f %f", sd.CREFmag, sd.CREFerror);
+   s.printf("%f %f", sd.CREFmag, sd.CREFerr);
    Memo4->Lines->Add(s );
    Memo4->Lines->Add(sd.ErrorMsg);
 
@@ -1621,7 +1675,7 @@ int __fastcall getCREFMAG(StarData* sd)
                    if(strcmp(" ", pchart[pi[i]]))
                       sscanf(pchart[pi[i]], " %f", &chart[chartnext % chartMAX].sdata[i].mag);
                    if(strcmp(" ", pchart[pi[i]+1]))
-                      sscanf(pchart[pi[i]+1], " %f", &chart[chartnext % chartMAX].sdata[i].error);
+                      sscanf(pchart[pi[i]+1], " %f", &chart[chartnext % chartMAX].sdata[i].err);
                 }
                 chartnext++;
              }
@@ -1705,63 +1759,83 @@ void __fastcall TForm1::Button4Click(TObject *Sender)
 
 
 
-float fTxy (char x, char y, float Txy, int mode) {
+float fTxy (char x, char y, float Txy, float rTxy, int mode) {
      // Secondary or Color form:  Txy
      //  1/slope of (x-y) vs (X-Y) :
      //    Txy= ((Xs-Ys)-(Xc-Yc)) / ((xs-ys)-(xc-yc))
-     float Xs, xs, Xc, xc, Ys, ys, Yc, yc, r;
+     float Xs, xs, Xc, xc, Ys, ys, Yc, yc, r, s, rXs, rxs, rXc, rxc, rYs, rys, rYc, ryc;
 
     switch(x) {
-       case 'b': Xs= Bs; xs= bs; Xc= Bc; xc= bc; break;
-       case 'v': Xs= Vs; xs= vs; Xc= Vc; xc= vc; break;
-       case 'r': Xs= Rs; xs= rs; Xc= Rc; xc= rc; break;
-       case 'i': Xs= Is; xs= is; Xc= Ic; xc= ic; break;
+       case 'b': Xs= Bs; xs= bs; Xc= Bc; xc= bc;  rXs= rBs; rxs= rbs; rXc= rBc; rxc= rbc; break;
+       case 'v': Xs= Vs; xs= vs; Xc= Vc; xc= vc;  rXs= rVs; rxs= rvs; rXc= rVc; rxc= rvc; break;
+       case 'r': Xs= Rs; xs= rs; Xc= Rc; xc= rc;  rXs= rRs; rxs= rrs; rXc= rRc; rxc= rrc; break;
+       case 'i': Xs= Is; xs= is; Xc= Ic; xc= ic;  rXs= rIs; rxs= ris; rXc= rIc; rxc= ric; break;
     }
     switch(y) {
-       case 'b': Ys= Bs; ys= bs; Yc= Bc; yc= bc; break;
-       case 'v': Ys= Vs; ys= vs; Yc= Vc; yc= vc; break;
-       case 'r': Ys= Rs; ys= rs; Yc= Rc; yc= rc; break;
-       case 'i': Ys= Is; ys= is; Yc= Ic; yc= ic; break;
+       case 'b': Ys= Bs; ys= bs; Yc= Bc; yc= bc;  rYs= rBs; rys= rbs; rYc= rBc; ryc= rbc; break;
+       case 'v': Ys= Vs; ys= vs; Yc= Vc; yc= vc;  rYs= rVs; rys= rvs; rYc= rVc; ryc= rvc; break;
+       case 'r': Ys= Rs; ys= rs; Yc= Rc; yc= rc;  rYs= rRs; rys= rrs; rYc= rRc; ryc= rrc; break;
+       case 'i': Ys= Is; ys= is; Yc= Ic; yc= ic;  rYs= rIs; rys= ris; rYc= rIc; ryc= ric; break;
     }
 
     switch(mode) {
        case 1: r= Xs=  Ys + (Xc-Yc) +  Txy * ((xs-ys)-(xc-yc));   break;
-       case 2: r= Ys=  Xs - (Xc-Yc) -  Tbv * ((xs-ys)-(xc-yc));   break;
+       case 2: r= Ys=  Xs - (Xc-Yc) -  Txy * ((xs-ys)-(xc-yc));   break;
+
+       case 11: s= ((xs-ys)-(xc-yc));
+            r= rXs=  sqrt( (pow(rYs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
+            break;
+       case 12: s= ((xs-ys)-(xc-yc));
+            r= rYs=  sqrt( (pow(rXs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
+            break;
     }
     return r;
 }
 
-float fTx_yz (char x, char y, char z, float Tx_yz, int mode) {
+float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode) {
     //Primary or star form:  Tx_yz
     //  slope of (X-x) vs (Y-Z) :
     //  Tx_yz= ((Xs-xs)-(Xc-xc)) / ((Ys-Zs)-(Yc-Zc))
-    float Xs, xs, Xc, xc, Ys, ys, Yc, yc, Zs, zs, Zc, zc, r;
+    float Xs, xs, Xc, xc, Ys, ys, Yc, yc, Zs, zs, Zc, zc, r, s;
+    float rXs, rxs, rXc, rxc, rYs, rys, rYc, ryc, rZs, rzs, rZc, rzc;
 
     switch(x) {
-       case 'b': Xs= Bs; xs= bs; Xc= Bc; xc= bc; break;
-       case 'v': Xs= Vs; xs= vs; Xc= Vc; xc= vc; break;
-       case 'r': Xs= Rs; xs= rs; Xc= Rc; xc= rc; break;
-       case 'i': Xs= Is; xs= is; Xc= Ic; xc= ic; break;
+       case 'b': Xs= Bs; xs= bs; Xc= Bc; xc= bc;  rXs= rBs; rxs= rbs; rXc= rBc; rxc= rbc; break;
+       case 'v': Xs= Vs; xs= vs; Xc= Vc; xc= vc;  rXs= rVs; rxs= rvs; rXc= rVc; rxc= rvc; break;
+       case 'r': Xs= Rs; xs= rs; Xc= Rc; xc= rc;  rXs= rRs; rxs= rrs; rXc= rRc; rxc= rrc; break;
+       case 'i': Xs= Is; xs= is; Xc= Ic; xc= ic;  rXs= rIs; rxs= ris; rXc= rIc; rxc= ric; break;
     }
     switch(y) {
-       case 'b': Ys= Bs;  Yc= Bc;  break;
-       case 'v': Ys= Vs;  Yc= Vc;  break;
-       case 'r': Ys= Rs;  Yc= Rc;  break;
-       case 'i': Ys= Is;  Yc= Ic;  break;
+       case 'b': Ys= Bs;  Yc= Bc;  rYs= rBs;  rYc= rBc; break;
+       case 'v': Ys= Vs;  Yc= Vc;  rYs= rVs;  rYc= rVc; break;
+       case 'r': Ys= Rs;  Yc= Rc;  rYs= rRs;  rYc= rRc; break;
+       case 'i': Ys= Is;  Yc= Ic;  rYs= rIs;  rYc= rIc; break;
     }
     switch(z) {
-       case 'b': Zs= Bs;  Zc= Bc;  break;
-       case 'v': Zs= Vs;  Zc= Vc;  break;
-       case 'r': Zs= Rs;  Zc= Rc;  break;
-       case 'i': Zs= Is;  Zc= Ic;  break;
+       case 'b': Zs= Bs;  Zc= Bc;  rZs= rBs;  rZc= rBc; break;
+       case 'v': Zs= Vs;  Zc= Vc;  rZs= rVs;  rZc= rVc; break;
+       case 'r': Zs= Rs;  Zc= Rc;  rZs= rRs;  rZc= rRc; break;
+       case 'i': Zs= Is;  Zc= Ic;  rZs= rIs;  rZc= rIc; break;
     }
 
     switch(mode) {
       case 1: r= Xs= xs + (Xc-xc) + Tx_yz * ((Ys-Zs)-(Yc-Zc));  break;
       case 2: r= Ys= Zs - (Yc-Zc) + ((Xs-xs)-(Xc-xc)) / Tx_yz;  break;
       case 3: r= Zs= Ys + (Yc-Zc) + ((Xs-xs)-(Xc-xc)) / Tx_yz;  break;
+
+      case 11: s= ((Ys-Zs)-(Yc-Zc));
+         r= rXs= sqrt((pow(rxs,2)+pow(rXc,2)+pow(rxc,2)) + pow(Tx_yz*s,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rYs,2)+pow(rZs,2)+pow(rYc,2)+pow(rZc,2))/pow(s,2)));
+         break;
+      case 12: s= ((Xs-xs)-(Xc-xc));
+         r= rYs= sqrt((pow(rZs,2)+pow(rYc,2)+pow(rZc,2)) + pow(Tx_yz*s,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
+         break;
+      case 13: s= ((Xs-xs)-(Xc-xc));
+         r= rYs= sqrt((pow(rYs,2)+pow(rYc,2)+pow(rZc,2)) + pow(Tx_yz*s,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
+         break;
     }
     return r;
 }
+
+
 
 

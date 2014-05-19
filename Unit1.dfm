@@ -1,6 +1,6 @@
 object Form1: TForm1
   Left = 138
-  Top = 117
+  Top = 85
   Width = 1141
   Height = 783
   HorzScrollBar.Visible = False
@@ -116,9 +116,7 @@ object Form1: TForm1
         Width = 97
         Height = 17
         Caption = 'Classic'
-        Checked = True
         TabOrder = 5
-        TabStop = True
       end
       object RadioButton2: TRadioButton
         Left = 24
@@ -126,7 +124,9 @@ object Form1: TForm1
         Width = 97
         Height = 17
         Caption = 'AAVSO '
+        Checked = True
         TabOrder = 6
+        TabStop = True
       end
       object RadioButton3: TRadioButton
         Left = 24
@@ -137,9 +137,9 @@ object Form1: TForm1
         TabOrder = 7
       end
       object IncludeRaw: TCheckBox
-        Left = 16
+        Left = 8
         Top = 392
-        Width = 121
+        Width = 137
         Height = 17
         Hint = 'Include Un transformed obs with Transformed  '
         Caption = 'include raw'
@@ -159,9 +159,17 @@ object Form1: TForm1
     object Coefficients: TTabSheet
       Caption = 'Coefficients'
       ImageIndex = 2
+      object Label17: TLabel
+        Left = 40
+        Top = 0
+        Width = 56
+        Height = 21
+        Hint = 'Describe the setup for the coefficiets documented below'
+        Caption = 'setup:'
+      end
       object GroupBox1: TGroupBox
         Left = 24
-        Top = 16
+        Top = 32
         Width = 1073
         Height = 649
         TabOrder = 0
@@ -806,7 +814,7 @@ object Form1: TForm1
         object CheckBox4: TCheckBox
           Left = 856
           Top = 46
-          Width = 41
+          Width = 50
           Height = 20
           Hint = 'slope of (B-b) versus (B-V)'
           Caption = 'B'
@@ -821,7 +829,7 @@ object Form1: TForm1
         object CheckBox5: TCheckBox
           Left = 856
           Top = 78
-          Width = 41
+          Width = 50
           Height = 20
           Hint = 'slope of (B-b) versus (B-V)'
           Caption = 'V'
@@ -836,7 +844,7 @@ object Form1: TForm1
         object CheckBox6: TCheckBox
           Left = 856
           Top = 110
-          Width = 41
+          Width = 50
           Height = 20
           Hint = 'slope of (B-b) versus (B-V)'
           Caption = 'R'
@@ -851,7 +859,7 @@ object Form1: TForm1
         object CheckBox7: TCheckBox
           Left = 856
           Top = 142
-          Width = 41
+          Width = 50
           Height = 20
           Hint = 'slope of (B-b) versus (B-V)'
           Caption = 'I'
@@ -866,7 +874,7 @@ object Form1: TForm1
         object CheckBox8: TCheckBox
           Left = 856
           Top = 174
-          Width = 41
+          Width = 50
           Height = 20
           Hint = 'slope of (B-b) versus (B-V)'
           Caption = 'U'
@@ -979,6 +987,15 @@ object Form1: TForm1
           Caption = 'apply'
           TabOrder = 69
         end
+      end
+      object setupEdit: TEdit
+        Left = 112
+        Top = 0
+        Width = 745
+        Height = 29
+        Hint = 'Describe the setup for the coefficiets documented below'
+        TabOrder = 1
+        OnExit = setupEditExit
       end
     end
     object Report: TTabSheet
@@ -1275,7 +1292,7 @@ object Form1: TForm1
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 725
     DesignFormLeft = 138
-    DesignFormTop = 117
+    DesignFormTop = 85
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18

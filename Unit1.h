@@ -136,6 +136,8 @@ __published:	// IDE-managed Components
    TEdit *Ti_viEdit;
    TEdit *Tr_viEdit;
    TCheckBox *applyExtinction;
+   TEdit *setupEdit;
+   TLabel *Label17;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -150,6 +152,7 @@ __published:	// IDE-managed Components
    void __fastcall Button2Click(TObject *Sender);
    void __fastcall Button3Click(TObject *Sender);
    void __fastcall Button4Click(TObject *Sender);
+   void __fastcall setupEditExit(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
