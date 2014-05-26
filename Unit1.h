@@ -138,6 +138,8 @@ __published:	// IDE-managed Components
    TCheckBox *applyExtinction;
    TEdit *setupEdit;
    TLabel *Label17;
+   TButton *changeINIfile;
+   TButton *saveasINIfile;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -154,6 +156,8 @@ __published:	// IDE-managed Components
    void __fastcall Button4Click(TObject *Sender);
    void __fastcall setupEditExit(TObject *Sender);
    void __fastcall applyExtinctionExit(TObject *Sender);
+   void __fastcall changeINIfileClick(TObject *Sender);
+   void __fastcall saveasINIfileClick(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
