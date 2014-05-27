@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.03
+#define Version  2.04
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -900,7 +900,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          j= s.SubString(k, 20).Pos(delim);
          //sd[sdi].GROUP= s.SubString(k, j- 1).ToInt(); might be "NA"
-         sd[sdi].GROUPs= s.SubString(k, j- 1);
+         sd[sdi].GROUPs= s.SubString(k, j- 1).TrimLeft().TrimRight();
          if(sd[sdi].GROUPs.UpperCase() =="NA"){ // || sd[sdi].GROUPs=="" ) {
             sd[sdi].processed= true; // skip
             sd[sdi].ErrorMsg+= " GROUP is NA or not assigned.";
@@ -1042,13 +1042,13 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                      sd[i].narr+= FILTC_desc[k][m] + "\r\n";
                }
                if(fc & FILT_Bx)
-                  sd[i].narr+= st.sprintf("Star: %s  Bs= %0.3f, bs= %0.3f, Bc= %0.3f, bc= %0.3f\r\n", Bts, Bs, bs, Bc, bc);
+                  sd[i].narr+= st.sprintf("Star: %s  Bs= %6.3f, bs= %6.3f, Bc= %6.3f, bc= %6.3f\r\n", Bts, Bs, bs, Bc, bc);
                if(fc & FILT_Vx)
-                  sd[i].narr+= st.sprintf("Star: %s  Vs= %0.3f, vs= %0.3f, Vc= %0.3f, vc= %0.3f\r\n", Vts, Vs, vs, Vc, vc);
+                  sd[i].narr+= st.sprintf("Star: %s  Vs= %6.3f, vs= %6.3f, Vc= %6.3f, vc= %6.3f\r\n", Vts, Vs, vs, Vc, vc);
                if(fc & FILT_Rx)
-                  sd[i].narr+= st.sprintf("Star: %s  Rs= %0.3f, rs= %0.3f, Rc= %0.3f, rc= %0.3f\r\n", Rts, Rs, rs, Rc, rc);
+                  sd[i].narr+= st.sprintf("Star: %s  Rs= %6.3f, rs= %6.3f, Rc= %6.3f, rc= %6.3f\r\n", Rts, Rs, rs, Rc, rc);
                if(fc & FILT_Ix)
-                  sd[i].narr+= st.sprintf("Star: %s  Is= %0.3f, is= %0.3f, Ic= %0.3f, ic= %0.3f\r\n", Its, Is, is, Ic, ic);
+                  sd[i].narr+= st.sprintf("Star: %s  Is= %6.3f, is= %6.3f, Ic= %6.3f, ic= %6.3f\r\n", Its, Is, is, Ic, ic);
 
             }
 
@@ -1777,7 +1777,7 @@ AnsiString UnTransformedFile= "";
 void __fastcall TForm1::Open1Click(TObject *Sender)
 {
    OpenDialog1->Title= "Open a un-transformed observation file";
-   OpenDialog1->Filter = "TXT files (*.txt)|*.TXT";
+   OpenDialog1->Filter = "any txt file (*.*)|*.*";
    if(OpenDialog1->Execute()){
       // put into the Input window
       UnTransformedFile= OpenDialog1->FileName;
