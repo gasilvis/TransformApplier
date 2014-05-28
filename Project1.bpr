@@ -3,7 +3,7 @@
 <PROJECT>
   <MACROS>
     <VERSION value="BCB.05.03"/>
-    <PROJECT value="Transformer.exe"/>
+    <PROJECT value="TransformApplier.exe"/>
     <OBJFILES value="Project1.obj Unit1.obj"/>
     <RESFILES value="Project1.res"/>
     <DEFFILE value=""/>
