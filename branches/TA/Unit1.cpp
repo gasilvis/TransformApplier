@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.04
+#define Version  2.05
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -901,10 +901,10 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          j= s.SubString(k, 20).Pos(delim);
          //sd[sdi].GROUP= s.SubString(k, j- 1).ToInt(); might be "NA"
          sd[sdi].GROUPs= s.SubString(k, j- 1).TrimLeft().TrimRight();
-         if(sd[sdi].GROUPs.UpperCase() =="NA"){ // || sd[sdi].GROUPs=="" ) {
-            sd[sdi].processed= true; // skip
-            sd[sdi].ErrorMsg+= " GROUP is NA or not assigned.";
-         }
+//         if(sd[sdi].GROUPs.UpperCase() =="NA"){ // || sd[sdi].GROUPs=="" ) {
+//            sd[sdi].processed= true; // skip
+//            sd[sdi].ErrorMsg+= " GROUP is NA or not assigned.";
+//         }
          k+= j;
 
          j= s.SubString(k, 20).Pos(delim);
@@ -1109,7 +1109,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 //   Memo4->Lines->Clear(); // report window
 
    Memo4->Lines->Add(" "); // blank line
-   Memo4->Lines->Add(Formula);
+   //Memo4->Lines->Add(Formula);
    Memo4->Lines->Add("Star                 Date   Filter  Grp    Vraw      Vzp      Vex    TranMag      diff     Vrep      VERR    VERRt");
    // build
    for(i= 0, j= 0; i< Memo1->Lines->Count; i++) {
@@ -1138,6 +1138,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             }
             //for(k= 0; k< FILTC_NUM; k++) {
             //   if(sd[j].FILTC==FILTC_mask[k]) {
+            /*   appears in narrative
                    k= FILTC_mask2index(sd[j].FILTC);
                    if(!FILTC_displayed[k]) { // if it has not been displayed
                       for(m= 0; m<FILTC_desc_rows; m++) {
@@ -1148,6 +1149,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                       }
                       FILTC_displayed[k]= true; // so we don't display again
                    }
+             */
             //   }
             // }
 
@@ -1226,6 +1228,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    // extinction report
 
    // group report
+   Memo4->Lines->Add("\r\n          Summary of group data");
    Memo4->Lines->Add("\n name+group      filtC   Bs     Vs     Rs     Is     bs     vs     rs     is     Bc     Vc     Rc     Ic     bc     vc     rc     ic");
    for(i= 0; i<gdi; i++) {
       r.sprintf("\"%-15s\" %3i", gd[i].Group, gd[i].FILTC);
