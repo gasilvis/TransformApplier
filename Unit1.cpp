@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.05
+#define Version  2.06
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -326,7 +326,7 @@ typedef struct GroupData {
    float      m[16]; // Star BVRI, bvri   Comp BVRI bvri
    AnsiString  ts[4];  // tstamp strings of providers of B V R I data
 } GroupData;
-#define gdiMAX 40
+#define gdiMAX 300
 GroupData gd[gdiMAX];
 
 
@@ -757,11 +757,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
        collect CREFmag, CREFerror
    */
    for(i= 0; i< Memo1->Lines->Count; i++) { // each line in the input text
-      s= Memo1->Lines->Strings[i];
+      s= Memo1->Lines->Strings[i].TrimLeft();
+      if(s.Length()==0) break;
       if(s[1]=='#') { // comment line
          //tbd  Could vet for required fields...
          if(s.SubString(2, 5)== "TYPE=") {
-             if(0==s.AnsiPos("EXTENDED")) {
+             if(s.SubString(7, 8).UpperCase()!= "EXTENDED") {
                 ShowMessage("The file must be of #TYPE=EXTENDED");
                 return;
              }
@@ -794,7 +795,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          // capture the line to sd
          sd[sdi].record= s;
-         sd[sdi].narr= s; sd[sdi].narr+= "\r\n";
+         sd[sdi].narr= s; //sd[sdi].narr+= "\r\n";
          sd[sdi].processed= false; // clear the flag
          sd[sdi].ErrorMsg= ""; // clear the msg
          sd[sdi].ensemble= false;
@@ -861,11 +862,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          j= s.SubString(k, 20).Pos(delim);
          sd[sdi].CNAME= s.SubString(k, j- 1).TrimLeft().TrimRight();
+    // look to trim label if lable+auid?
          k+= j;
          if(sd[sdi].CNAME=="ENSEMBLE") {
             sd[sdi].ensemble= true;
-    //todo        sd[sdi].ErrorMsg+= " Cannot transform ENSEMBLE obs.";
-    //        sd[sdi].processed= true; // skip this record
+            sd[sdi].ErrorMsg+= " Cannot transform ENSEMBLE obs.";
+            sd[sdi].processed= true; // skip this record
          }
          j= s.SubString(k, 20).Pos(delim);
          if(!sd[sdi].ensemble) { // if so, CMAG is na
@@ -875,6 +877,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          j= s.SubString(k, 20).Pos(delim);
          sd[sdi].KNAME= s.SubString(k, j- 1).TrimLeft().TrimRight();
+    // look to trim label if lable+auid?
+
          if(sd[sdi].KNAME.UpperCase()=="NO") sd[sdi].KNAME= "na"; // AIP uses NO; webobs wants na
          k+= j;
 
@@ -882,7 +886,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          if(sd[sdi].KNAME!="na")
             sd[sdi].KMAG= s.SubString(k, j- 1).ToDouble();        // will be NO if no check star
          k+= j;
-
+         /*    not a valid way to do transforms with ensemble data
          // if ensemble, the check star is K. Move it to C for processing
          if(sd[sdi].ensemble) {
             if(sd[sdi].KNAME=="na") {
@@ -893,7 +897,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                sd[sdi].CMAGraw  = sd[sdi].KMAG;
             }
          }
-
+         */
          j= s.SubString(k, 20).Pos(delim);
          sd[sdi].AMASS= s.SubString(k, j- 1).ToDouble();
          k+= j;
@@ -901,6 +905,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          j= s.SubString(k, 20).Pos(delim);
          //sd[sdi].GROUP= s.SubString(k, j- 1).ToInt(); might be "NA"
          sd[sdi].GROUPs= s.SubString(k, j- 1).TrimLeft().TrimRight();
+         if(sd[sdi].GROUPs.UpperCase() =="NA") sd[sdi].GROUPs= ""; // treat NA as blank
 //         if(sd[sdi].GROUPs.UpperCase() =="NA"){ // || sd[sdi].GROUPs=="" ) {
 //            sd[sdi].processed= true; // skip
 //            sd[sdi].ErrorMsg+= " GROUP is NA or not assigned.";
@@ -943,24 +948,24 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             sd[sdi].processed= true;
             break;
          } else {
-            sd[sdi].narr+= st.sprintf("CREFMAG= %cc= %0.3f +/- %0.3f\r\n", toupper(FILTname[sd[sdi].filter]), sd[sdi].CREFmag, sd[sdi].CREFerr);
+            sd[sdi].narr+= st.sprintf("\r\nCREFMAG= %cc= %0.3f +/- %0.3f", toupper(FILTname[sd[sdi].filter]), sd[sdi].CREFmag, sd[sdi].CREFerr);
          }
 
          // correct VMAG from AIPWIN reported value to observed value
          if(sd[sdi].MTYPE == 'A' || sd[sdi].MTYPE == 'S') { // "ABS" or "STD"
             sd[sdi].VMAGzp= sd[sdi].VMAGraw + sd[sdi].CMAGraw - sd[sdi].CREFmag;
-            sd[sdi].narr+= st.sprintf("ABS or STD inst mag: VMAGzp= %0.3f = %0.3f + %0.3f - %0.3f\r\n", sd[sdi].VMAGzp, sd[sdi].VMAGraw, sd[sdi].CMAGraw, sd[sdi].CREFmag);
+            sd[sdi].narr+= st.sprintf("\r\nABS or STD inst mag: VMAGzp= %0.3f = %0.3f + %0.3f - %0.3f", sd[sdi].VMAGzp, sd[sdi].VMAGraw, sd[sdi].CMAGraw, sd[sdi].CREFmag);
          } else { //if(sd[sdi].MTYPE == 'D') { // "DIF"
             sd[sdi].VMAGzp= sd[sdi].VMAGraw + sd[sdi].CMAGraw;
-            sd[sdi].narr+= st.sprintf("DIF inst mag: VMAGzp= %0.3f = %0.3f + %0.3f \r\n", sd[sdi].VMAGzp, sd[sdi].VMAGraw, sd[sdi].CMAGraw);
+            sd[sdi].narr+= st.sprintf("\r\nDIF inst mag: VMAGzp= %0.3f = %0.3f + %0.3f ", sd[sdi].VMAGzp, sd[sdi].VMAGraw, sd[sdi].CMAGraw);
          }
 
          // apply Extinction correction
          if(applyExtinction->Checked) {
             sd[sdi].CMAGex= sd[sdi].CMAGraw - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
-            sd[sdi].narr+= st.sprintf("CMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f\r\n", sd[sdi].CMAGex, sd[sdi].CMAGraw, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
+            sd[sdi].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[sdi].CMAGex, sd[sdi].CMAGraw, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
             sd[sdi].VMAGex= sd[sdi].VMAGzp  - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
-            sd[sdi].narr+= st.sprintf("VMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f\r\n", sd[sdi].VMAGex, sd[sdi].VMAGzp, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
+            sd[sdi].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[sdi].VMAGex, sd[sdi].VMAGzp, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
          } else {
             sd[sdi].CMAGex= sd[sdi].CMAGraw;
             sd[sdi].VMAGex= sd[sdi].VMAGzp;
@@ -968,9 +973,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          // corrections done
          sd[sdi].CMAG= sd[sdi].CMAGex;
          sd[sdi].CERR= 0; // same error as vmag, fully correlated
-         sd[sdi].narr+= st.sprintf("%cc= %0.3f +/- %0.3f (assume correlated with v error)\r\n", tolower(FILTname[sd[sdi].filter]), sd[sdi].CMAG, sd[sdi].CERR);
+         sd[sdi].narr+= st.sprintf("\r\n%cc= %0.3f +/- %0.3f (assume correlated with v error)", tolower(FILTname[sd[sdi].filter]), sd[sdi].CMAG, sd[sdi].CERR);
          sd[sdi].VMAG= sd[sdi].VMAGex;
-         sd[sdi].narr+= st.sprintf("%cs= %0.3f +/- %0.3f\r\n", tolower(FILTname[sd[sdi].filter]), sd[sdi].VMAG, sd[sdi].VERR);
+         sd[sdi].narr+= st.sprintf("\r\n%cs= %0.3f +/- %0.3f", tolower(FILTname[sd[sdi].filter]), sd[sdi].VMAG, sd[sdi].VERR);
 
 //Memo4->Lines->Add(sd[sdi].narr);
          sdi++; // ready for next
@@ -1006,7 +1011,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          break; // we're done
 
 
-      // we are ready to process a star. the RAM variables are all set
+      // we are ready to process a star+group. the RAM variables are all set
+      // scanned all unprocessed stars and tagged all with common name+group (cs)
+      //     note no filter duplications..
 
       // what is the filter combo for this star (cs)?
       // also check for blank group designation; assign if necessary
@@ -1014,10 +1021,10 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
       for(j= 0, fc= 0; j< FILT_NUM; j++) {
          if(sf[j]!=sdiMAX) {
             fc|= FILT_mask[j];
-            if(sd[sf[j]].GROUPs== "") { // assign a groupno
-               sd[sf[j]].GROUPs= GroupNum;
+            //if(sd[sf[j]].GROUPs== "") { // assign a groupno,  always
+               sd[sf[j]].GROUPs+= GroupNum;
                cs= sd[sf[j]].NAME+ sd[sf[j]].GROUPs;
-            }
+            //}
          }
       }
       fc|= Method_Mask;
@@ -1039,32 +1046,30 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                k= FILTC_mask2index(sd[i].FILTC);
                for(m= 0; m<FILTC_desc_rows; m++) {
                   if(FILTC_desc[k][m]!= NULL)
-                     sd[i].narr+= FILTC_desc[k][m] + "\r\n";
+                     sd[i].narr+= "\r\n"+ FILTC_desc[k][m];// + "\r\n";
                }
                if(fc & FILT_Bx)
-                  sd[i].narr+= st.sprintf("Star: %s  Bs= %6.3f, bs= %6.3f, Bc= %6.3f, bc= %6.3f\r\n", Bts, Bs, bs, Bc, bc);
+                  sd[i].narr+= st.sprintf("\r\nStar: %s  Bs= %6.3f, bs= %6.3f, Bc= %6.3f, bc= %6.3f", Bts, Bs, bs, Bc, bc);
                if(fc & FILT_Vx)
-                  sd[i].narr+= st.sprintf("Star: %s  Vs= %6.3f, vs= %6.3f, Vc= %6.3f, vc= %6.3f\r\n", Vts, Vs, vs, Vc, vc);
+                  sd[i].narr+= st.sprintf("\r\nStar: %s  Vs= %6.3f, vs= %6.3f, Vc= %6.3f, vc= %6.3f", Vts, Vs, vs, Vc, vc);
                if(fc & FILT_Rx)
-                  sd[i].narr+= st.sprintf("Star: %s  Rs= %6.3f, rs= %6.3f, Rc= %6.3f, rc= %6.3f\r\n", Rts, Rs, rs, Rc, rc);
+                  sd[i].narr+= st.sprintf("\r\nStar: %s  Rs= %6.3f, rs= %6.3f, Rc= %6.3f, rc= %6.3f", Rts, Rs, rs, Rc, rc);
                if(fc & FILT_Ix)
-                  sd[i].narr+= st.sprintf("Star: %s  Is= %6.3f, is= %6.3f, Ic= %6.3f, ic= %6.3f\r\n", Its, Is, is, Ic, ic);
+                  sd[i].narr+= st.sprintf("\r\nStar: %s  Is= %6.3f, is= %6.3f, Ic= %6.3f, ic= %6.3f", Its, Is, is, Ic, ic);
 
-            }
-
-
-            if(sd[i].MTYPE == 'A' || sd[i].MTYPE == 'S') { // "ABS" or "STD"
-               sd[i].VMAGrep= ( sd[i].VMAGt - sd[i].CMAGraw ) + sd[i].CREFmag;
-               sd[i].narr+= st.sprintf("VMAGreport= %0.3f= (%0.3f - %0.3f) + %0.3f  \r\n", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw, sd[i].CREFmag);
-            } else { // "DIF"
-               sd[i].VMAGrep= sd[i].VMAGt - sd[i].CMAGraw;
-               sd[i].narr+= st.sprintf("VMAGreport= %0.3f= %0.3f - %0.3f\r\n", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw);
-            }
+                if(sd[i].MTYPE == 'A' || sd[i].MTYPE == 'S') { // "ABS" or "STD"
+                  sd[i].VMAGrep= ( sd[i].VMAGt - sd[i].CMAGraw ) + sd[i].CREFmag;
+                  sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= (%0.3f - %0.3f) + %0.3f  ", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw, sd[i].CREFmag);
+               } else { // "DIF"
+                  sd[i].VMAGrep= sd[i].VMAGt - sd[i].CMAGraw;
+                  sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= %0.3f - %0.3f", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw);
+               }
+           }
 
 
 
             // capture the group data
-            //  into sd
+            //  into sd     not really necessary; narrative got the data
             sd[i].gd.Group= sd[i].NAME+ sd[i].GROUPs;
             sd[i].gd.FILTC= fc;
             for(j= 0; j<16; j++)
@@ -1078,12 +1083,17 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             if(fc & FILT_Ix)
                sd[i].gd.m[3]= Is, sd[i].gd.m[7]= is, sd[i].gd.m[11]= Ic, sd[i].gd.m[15]= ic;
 
+
+
+         } //
+      } // for
+         //  don't really need this
             // and gd
             if(gdi==gdiMAX) {
                ShowMessage("Too many groups in the file.");
                return;
             }
-            gd[gdi].Group= sd[i].NAME+ sd[i].GROUPs;
+            gd[gdi].Group= cs; //sd[i].NAME+ sd[i].GROUPs;
             gd[gdi].FILTC= fc;
             for(j= 0; j<16; j++)
                gd[gdi].m[j]= 0; // clear
@@ -1096,11 +1106,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             if(fc & FILT_Ix)
                gd[gdi].m[3]= Is, gd[gdi].m[7]= is, gd[gdi].m[11]= Ic, gd[gdi].m[15]= ic;
             gdi++;
-
-
-         }
-      }
-   } while(42);
+           // */
+   } while(42);  // no cs will break us out
 
 
 
@@ -1113,16 +1120,19 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    Memo4->Lines->Add("Star                 Date   Filter  Grp    Vraw      Vzp      Vex    TranMag      diff     Vrep      VERR    VERRt");
    // build
    for(i= 0, j= 0; i< Memo1->Lines->Count; i++) {
-      s= Memo1->Lines->Strings[i];
+      s= Memo1->Lines->Strings[i].TrimLeft();
       if(s.Length()!=0) // skip if blank
       if(s[1]=='#') { // non-data line
          Memo2->Lines->Add(s); // just copy
       } else { // data line
          if(!sd[j].TRANS) { // not Transformed
             Memo2->Lines->Add(s); // just copy original
-            r.sprintf("%s %s %8.3f NA", sd[j].NAME, sd[j].DATEs, sd[j].VMAG);
+            //r.sprintf("%s %s %8.3f NA", sd[j].NAME, sd[j].DATEs, sd[j].VMAG);
             //? where was this to go? Not here:   Memo2->Lines->Add(r);
-         } else {  // display transformed data    ?? what if it was transformed in the input, thus skipped?
+            r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f    not transformed", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
+                                  , sd[j].VMAGraw, sd[j].VMAGzp, sd[j].VMAG );// ,    sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep, sd[j].VERR, sd[j].VERRt);
+            Memo4->Lines->Add(r);
+        } else {  // display transformed data    ?? what if it was transformed in the input, thus skipped?
             // Standard info blocks will be output once
             if(!trans_display) { // show the transform coefficients
                Memo2->Lines->Add("#   transform coefficients applied by Transformer Applier, version "+ FormatFloat("0.00", Version));
@@ -1175,11 +1185,11 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             }
             s+= delim;
 
-            if(sd[j].ensemble) {
-               s+= "ENSEMBLE"+ delim; s+= "NA"+ delim;   // cname data
-               s+= sd[j].CNAME+ delim; // kname was stored here
-               s+= FormatFloat("0.000", sd[j].CMAGraw)+ delim;
-            } else {
+            //if(sd[j].ensemble) {
+            //   s+= "ENSEMBLE"+ delim; s+= "NA"+ delim;   // cname data
+            //   s+= sd[j].CNAME+ delim; // kname was stored here
+            //   s+= FormatFloat("0.000", sd[j].CMAGraw)+ delim;
+            //} else {
                s+= sd[j].CNAME+ delim;
                s+= FormatFloat("0.000", sd[j].CMAGraw)+ delim;
 
@@ -1187,7 +1197,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                if(sd[j].KNAME=="na")
                   s+="na" , s+= delim;
                else s+= FormatFloat("0.000", sd[j].KMAG)+ delim;
-            }
+            //}
             s+= FormatFloat("0.0000", sd[j].AMASS)+ delim;
 
             //s+= IntToStr(sd[j].GROUP)+ delim;
@@ -1220,9 +1230,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
    Memo4->Lines->Add("\r\n    Detail narrative for each observation  \r\n");
    for(i= 0; i<sdi; i++) {
-      sd[i].narr+= sd[i].recordT;
+      sd[i].narr+= "\r\n"+ sd[i].recordT;
       Memo4->Lines->Add(sd[i].narr);
-      Memo4->Lines->Add(sd[i].ErrorMsg);
+      Memo4->Lines->Add(sd[i].ErrorMsg + "\r\n");
    }
 
    // extinction report
@@ -1262,7 +1272,7 @@ float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode);
 void ProcessStarData(StarData *d, unsigned short fc)
 {
    AnsiString as;
-   float x;
+   float x;    int loop= 0;
    d->TRANS= true;
    d->FILTC= fc;  // which combination used
    rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; // default error is the obs error
@@ -1340,7 +1350,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             break;
          }
          Bs= bs, Vs= vs, Rs= rs, Is= is;
-         do {
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
@@ -1351,7 +1361,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
          d->StarsUsed= "# BVIR AAVSO using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do {
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
@@ -1727,7 +1737,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
                d->ErrorMsg+= FILT_name[j];
             }
          }
-         d->ErrorMsg+= ".";
+         d->ErrorMsg+= "; not transformed.";
          d->TRANS= false;
          break;
    }
