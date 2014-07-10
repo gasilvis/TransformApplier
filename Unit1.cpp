@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.06
+#define Version  2.08
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -157,6 +157,7 @@ Coef EC[]= { // matches filter enum  eg FILT_Bi
 void __fastcall TForm1::FormCreate(TObject *Sender)
 {
    VersionLabel->Caption= "Version "+ FormatFloat("0.00", Version);
+   Form1->Caption= "TA, the AAVSO Transform Applier application, "+ FormatFloat("0.00", Version);
    //nb  The labels are now checkboxes
    // have to assign here because they don't exist until here
    TC[0].coeflab= Label1,   TC[0].coefedit= TbvEdit;  TC[0].erroredit= rTbvEdit;
@@ -729,7 +730,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    char delim= ';';
    unsigned short fc; // filter combo and index
    float crefmag= -999, x, creferr;
-   int i, j, k, m, sdi= 0, gdi= 0;
+   int i, j, k, m, sdi, gdi= 0;
    AnsiString s, r, sx, st;
 
    // init
@@ -756,9 +757,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
        must have OBSTYPE
        collect CREFmag, CREFerror
    */
-   for(i= 0; i< Memo1->Lines->Count; i++) { // each line in the input text
+   for(i= 0, sdi= -1; i< Memo1->Lines->Count; i++) { // each line in the input text
       s= Memo1->Lines->Strings[i].TrimLeft();
-      if(s.Length()==0) break;
+      if(s.Length()==0) continue;
       if(s[1]=='#') { // comment line
          //tbd  Could vet for required fields...
          if(s.SubString(2, 5)== "TYPE=") {
@@ -792,6 +793,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             ShowMessage("Too many observations in the file.");
             return;
          }
+         sdi++;
 
          // capture the line to sd
          sd[sdi].record= s;
@@ -862,7 +864,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          j= s.SubString(k, 20).Pos(delim);
          sd[sdi].CNAME= s.SubString(k, j- 1).TrimLeft().TrimRight();
-    // look to trim label if lable+auid?
+         if(sd[sdi].CNAME.Length()>11)  // assume is label + auid
+            sd[sdi].CNAME= sd[sdi].CNAME.SubString(sd[sdi].CNAME.Length()-10, 11);
          k+= j;
          if(sd[sdi].CNAME=="ENSEMBLE") {
             sd[sdi].ensemble= true;
@@ -877,7 +880,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          j= s.SubString(k, 20).Pos(delim);
          sd[sdi].KNAME= s.SubString(k, j- 1).TrimLeft().TrimRight();
-    // look to trim label if lable+auid?
+         if(sd[sdi].KNAME.Length()>11)  // assume is label + auid
+            sd[sdi].KNAME= sd[sdi].KNAME.SubString(sd[sdi].KNAME.Length()-10, 11);
 
          if(sd[sdi].KNAME.UpperCase()=="NO") sd[sdi].KNAME= "na"; // AIP uses NO; webobs wants na
          k+= j;
@@ -936,9 +940,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             }
             if(-999==sd[sdi].CREFmag) { // try internet
                if(!getCREFMAG(&sd[sdi])) {
-                  sd[sdi].ErrorMsg+= " No CREFMAG available.";
-                  sd[sdi].processed= true;
-                  break;  // skip record
+                  sd[sdi].ErrorMsg+= " No CREFMAG available. Possibly bad chart reference";
+                  sd[sdi].processed= true; // skip record
+                  break;  // full break here
                }
             }
          }
@@ -946,7 +950,6 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          if(sd[sdi].CREFmag == 0) {
             sd[sdi].ErrorMsg+= " CREFMAG is 0.";
             sd[sdi].processed= true;
-            break;
          } else {
             sd[sdi].narr+= st.sprintf("\r\nCREFMAG= %cc= %0.3f +/- %0.3f", toupper(FILTname[sd[sdi].filter]), sd[sdi].CREFmag, sd[sdi].CREFerr);
          }
@@ -977,11 +980,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          sd[sdi].VMAG= sd[sdi].VMAGex;
          sd[sdi].narr+= st.sprintf("\r\n%cs= %0.3f +/- %0.3f", tolower(FILTname[sd[sdi].filter]), sd[sdi].VMAG, sd[sdi].VERR);
 
-//Memo4->Lines->Add(sd[sdi].narr);
-         sdi++; // ready for next
       }
    }
-   // sdi is the number of obs collected
+   sdi++; // sdi is the number of obs collected
 
    // process
    do {
