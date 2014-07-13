@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.08
+#define Version  2.09
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -205,6 +205,7 @@ void __fastcall TForm1::ReadCoefficients(TObject *Sender)
    AnsiString as;
 
    setupEdit->Text= ini->ReadString("Setup", "description", "Describe the setup that has the coefficients below");
+   setupEdit->Hint= INIfilename;
    applyExtinction->Checked= ini->ReadBool("Extinction", "apply", false);
    for(int i= 0; i< NumTCoef; i++) {
       as.sprintf("%-8s %s", TC[i].name, TC[i].coefhint);
@@ -955,9 +956,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          }
 
          // correct VMAG from AIPWIN reported value to observed value
-         if(sd[sdi].MTYPE == 'A' || sd[sdi].MTYPE == 'S') { // "ABS" or "STD"
+         if(sd[sdi].MTYPE == 'S') { // "STD"
             sd[sdi].VMAGzp= sd[sdi].VMAGraw + sd[sdi].CMAGraw - sd[sdi].CREFmag;
-            sd[sdi].narr+= st.sprintf("\r\nABS or STD inst mag: VMAGzp= %0.3f = %0.3f + %0.3f - %0.3f", sd[sdi].VMAGzp, sd[sdi].VMAGraw, sd[sdi].CMAGraw, sd[sdi].CREFmag);
+            sd[sdi].narr+= st.sprintf("\r\nSTD inst mag: VMAGzp= %0.3f = %0.3f + %0.3f - %0.3f", sd[sdi].VMAGzp, sd[sdi].VMAGraw, sd[sdi].CMAGraw, sd[sdi].CREFmag);
+         } else if(sd[sdi].MTYPE == 'A') { // "ABS"
+            sd[sdi].VMAGzp= sd[sdi].VMAGraw;
+            sd[sdi].narr+= st.sprintf("\r\nABS inst mag: VMAGzp= %0.3f = %0.3f ", sd[sdi].VMAGzp, sd[sdi].VMAGraw);
          } else { //if(sd[sdi].MTYPE == 'D') { // "DIF"
             sd[sdi].VMAGzp= sd[sdi].VMAGraw + sd[sdi].CMAGraw;
             sd[sdi].narr+= st.sprintf("\r\nDIF inst mag: VMAGzp= %0.3f = %0.3f + %0.3f ", sd[sdi].VMAGzp, sd[sdi].VMAGraw, sd[sdi].CMAGraw);
@@ -1058,9 +1062,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                if(fc & FILT_Ix)
                   sd[i].narr+= st.sprintf("\r\nStar: %s  Is= %6.3f, is= %6.3f, Ic= %6.3f, ic= %6.3f", Its, Is, is, Ic, ic);
 
-                if(sd[i].MTYPE == 'A' || sd[i].MTYPE == 'S') { // "ABS" or "STD"
+                if(sd[i].MTYPE == 'S') { // "STD"
                   sd[i].VMAGrep= ( sd[i].VMAGt - sd[i].CMAGraw ) + sd[i].CREFmag;
                   sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= (%0.3f - %0.3f) + %0.3f  ", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw, sd[i].CREFmag);
+               } else if(sd[i].MTYPE == 'A') { // "ABS"
+                  sd[i].VMAGrep= sd[i].VMAGt;
+                  sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= %0.3f", sd[i].VMAGrep, sd[i].VMAGt);
                } else { // "DIF"
                   sd[i].VMAGrep= sd[i].VMAGt - sd[i].CMAGraw;
                   sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= %0.3f - %0.3f", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw);
@@ -1905,7 +1912,7 @@ void __fastcall TForm1::Button2Click(TObject *Sender)
 
 }
 //---------------------------------------------------------------------------
-
+#define cpBufSize 10000
 //int __fastcall TForm1::getCREFMAG(TObject *Sender, StarData* sd)
 int __fastcall getCREFMAG(StarData* sd)
 {
@@ -1914,7 +1921,7 @@ int __fastcall getCREFMAG(StarData* sd)
     char* pch; int j, i;
     char  pchart[45][20];
     int pi[]= {7, 10, 13, 16, 4};  // [FILT_NUM];
-    char cp[10000];
+    char cp[cpBufSize];
     AnsiString as;
 
     ret= checkChart(sd);
@@ -1940,7 +1947,7 @@ int __fastcall getCREFMAG(StarData* sd)
           //   Form1->Memo4->Lines->Add("hdr>" + Form1->HttpCli1->RcvdHeader->Strings[I]);
           DataIn = new TFileStream(Form1->HttpCli1->DocName, fmOpenRead);
           //Memo4->Lines->LoadFromStream(DataIn);
-          DataIn->ReadBuffer(cp, DataIn->Size);
+          DataIn->ReadBuffer(cp, min(cpBufSize, DataIn->Size));
           delete DataIn;
           if(strstr(cp, "Sorry, we cannot")) {
              sd->ErrorMsg+= " Bad chart reference.";
