@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.09
+#define Version  2.10
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -366,7 +366,7 @@ typedef struct StarData { // eg
    double      DATE;  // 2454572.64069
    AnsiString  DATEs;
    float       VMAGraw; // from the file
-   float       VMAGzp;  // corrected for zero point
+   float       VMAGinst;  // corrected for zero point  instrumental mag
    float       VMAGex;  // corrected for extinction
    float       VMAG;    // final
    float       VMAGt; // transformed magnitude
@@ -957,25 +957,25 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          // correct VMAG from AIPWIN reported value to observed value
          if(sd[sdi].MTYPE == 'S') { // "STD"
-            sd[sdi].VMAGzp= sd[sdi].VMAGraw + sd[sdi].CMAGraw - sd[sdi].CREFmag;
-            sd[sdi].narr+= st.sprintf("\r\nSTD inst mag: VMAGzp= %0.3f = %0.3f + %0.3f - %0.3f", sd[sdi].VMAGzp, sd[sdi].VMAGraw, sd[sdi].CMAGraw, sd[sdi].CREFmag);
+            sd[sdi].VMAGinst= sd[sdi].VMAGraw + sd[sdi].CMAGraw - sd[sdi].CREFmag;
+            sd[sdi].narr+= st.sprintf("\r\nSTD inst mag: Vinst= %0.3f = %0.3f + %0.3f - %0.3f", sd[sdi].VMAGinst, sd[sdi].VMAGraw, sd[sdi].CMAGraw, sd[sdi].CREFmag);
          } else if(sd[sdi].MTYPE == 'A') { // "ABS"
-            sd[sdi].VMAGzp= sd[sdi].VMAGraw;
-            sd[sdi].narr+= st.sprintf("\r\nABS inst mag: VMAGzp= %0.3f = %0.3f ", sd[sdi].VMAGzp, sd[sdi].VMAGraw);
+            sd[sdi].VMAGinst= sd[sdi].VMAGraw;
+            sd[sdi].narr+= st.sprintf("\r\nABS inst mag: Vinst= %0.3f = %0.3f ", sd[sdi].VMAGinst, sd[sdi].VMAGraw);
          } else { //if(sd[sdi].MTYPE == 'D') { // "DIF"
-            sd[sdi].VMAGzp= sd[sdi].VMAGraw + sd[sdi].CMAGraw;
-            sd[sdi].narr+= st.sprintf("\r\nDIF inst mag: VMAGzp= %0.3f = %0.3f + %0.3f ", sd[sdi].VMAGzp, sd[sdi].VMAGraw, sd[sdi].CMAGraw);
+            sd[sdi].VMAGinst= sd[sdi].VMAGraw + sd[sdi].CMAGraw;
+            sd[sdi].narr+= st.sprintf("\r\nDIF inst mag: Vinst= %0.3f = %0.3f + %0.3f ", sd[sdi].VMAGinst, sd[sdi].VMAGraw, sd[sdi].CMAGraw);
          }
 
          // apply Extinction correction
          if(applyExtinction->Checked) {
             sd[sdi].CMAGex= sd[sdi].CMAGraw - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
             sd[sdi].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[sdi].CMAGex, sd[sdi].CMAGraw, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
-            sd[sdi].VMAGex= sd[sdi].VMAGzp  - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
-            sd[sdi].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[sdi].VMAGex, sd[sdi].VMAGzp, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
+            sd[sdi].VMAGex= sd[sdi].VMAGinst  - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
+            sd[sdi].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[sdi].VMAGex, sd[sdi].VMAGinst, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
          } else {
             sd[sdi].CMAGex= sd[sdi].CMAGraw;
-            sd[sdi].VMAGex= sd[sdi].VMAGzp;
+            sd[sdi].VMAGex= sd[sdi].VMAGinst;
          }
          // corrections done
          sd[sdi].CMAG= sd[sdi].CMAGex;
@@ -1125,7 +1125,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
    Memo4->Lines->Add(" "); // blank line
    //Memo4->Lines->Add(Formula);
-   Memo4->Lines->Add("Star                 Date   Filter  Grp    Vraw      Vzp      Vex    TranMag      diff     Vrep      VERR    VERRt");
+   Memo4->Lines->Add("Star                 Date   Filter  Grp    Vraw      Vinst    Vex    TranMag      diff     Vrep      VERR    VERRt");
    // build
    for(i= 0, j= 0; i< Memo1->Lines->Count; i++) {
       s= Memo1->Lines->Strings[i].TrimLeft();
@@ -1138,7 +1138,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             //r.sprintf("%s %s %8.3f NA", sd[j].NAME, sd[j].DATEs, sd[j].VMAG);
             //? where was this to go? Not here:   Memo2->Lines->Add(r);
             r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f    not transformed", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
-                                  , sd[j].VMAGraw, sd[j].VMAGzp, sd[j].VMAG );// ,    sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep, sd[j].VERR, sd[j].VERRt);
+                                  , sd[j].VMAGraw, sd[j].VMAGinst, sd[j].VMAG );// ,    sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep, sd[j].VERR, sd[j].VERRt);
             Memo4->Lines->Add(r);
         } else {  // display transformed data    ?? what if it was transformed in the input, thus skipped?
             // Standard info blocks will be output once
@@ -1220,7 +1220,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
             // add a star report line
             r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f  %8.3f %10.5f %8.3f  %8.3f %8.3f", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
-                                  , sd[j].VMAGraw, sd[j].VMAGzp, sd[j].VMAG, sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep, sd[j].VERR, sd[j].VERRt);
+                                  , sd[j].VMAGraw, sd[j].VMAGinst, sd[j].VMAG, sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep, sd[j].VERR, sd[j].VERRt);
             Memo4->Lines->Add(r);
 
             // add info about the analysis
@@ -1379,6 +1379,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
+
       case FILTC_BVa:
          if(Tb_bv==0 || Tv_bv==0) {
             d->ErrorMsg+= " Missing a coefficient; need Tb_bv and Tv_bv.";
@@ -1419,7 +1420,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             vs = fTxy(b, v, Tbv, rTbv, 2);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
-         d->StarsUsed= "# BV classic using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
+         d->StarsUsed= "# BV classic and alternative using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
          do {
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
