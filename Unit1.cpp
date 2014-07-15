@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.10
+#define Version  2.11
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -854,7 +854,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          }
 
          j= s.SubString(k, 20).Pos(delim);
-         if     (s.SubString(k, j- 1).UpperCase().TrimLeft().TrimRight()== "ABS") sd[sdi].MTYPE= 'A';
+         if     (s.SubString(k, j- 1).UpperCase().TrimLeft().TrimRight()== "ABS") sd[sdi].MTYPE= 'S'; // ignore ABS. This is STD
          else if(s.SubString(k, j- 1).UpperCase().TrimLeft().TrimRight()== "DIF") sd[sdi].MTYPE= 'D';
          else if(s.SubString(k, j- 1).UpperCase().TrimLeft().TrimRight()== "STD") sd[sdi].MTYPE= 'S';
          else {
@@ -959,7 +959,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          if(sd[sdi].MTYPE == 'S') { // "STD"
             sd[sdi].VMAGinst= sd[sdi].VMAGraw + sd[sdi].CMAGraw - sd[sdi].CREFmag;
             sd[sdi].narr+= st.sprintf("\r\nSTD inst mag: Vinst= %0.3f = %0.3f + %0.3f - %0.3f", sd[sdi].VMAGinst, sd[sdi].VMAGraw, sd[sdi].CMAGraw, sd[sdi].CREFmag);
-         } else if(sd[sdi].MTYPE == 'A') { // "ABS"
+         } else if(sd[sdi].MTYPE == 'A') { // "ABS"     deprecated; will have been changed to STD
             sd[sdi].VMAGinst= sd[sdi].VMAGraw;
             sd[sdi].narr+= st.sprintf("\r\nABS inst mag: Vinst= %0.3f = %0.3f ", sd[sdi].VMAGinst, sd[sdi].VMAGraw);
          } else { //if(sd[sdi].MTYPE == 'D') { // "DIF"
@@ -1062,7 +1062,10 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                if(fc & FILT_Ix)
                   sd[i].narr+= st.sprintf("\r\nStar: %s  Is= %6.3f, is= %6.3f, Ic= %6.3f, ic= %6.3f", Its, Is, is, Ic, ic);
 
-                if(sd[i].MTYPE == 'S') { // "STD"
+               sd[i].VMAGrep= sd[i].VMAGt;
+               sd[i].narr+= st.sprintf("\r\nVMAGtrans= %0.3f", sd[i].VMAGt);
+               /*
+               if(sd[i].MTYPE == 'S') { // "STD"
                   sd[i].VMAGrep= ( sd[i].VMAGt - sd[i].CMAGraw ) + sd[i].CREFmag;
                   sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= (%0.3f - %0.3f) + %0.3f  ", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw, sd[i].CREFmag);
                } else if(sd[i].MTYPE == 'A') { // "ABS"
@@ -1072,6 +1075,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   sd[i].VMAGrep= sd[i].VMAGt - sd[i].CMAGraw;
                   sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= %0.3f - %0.3f", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw);
                }
+               */
            }
 
 
@@ -1125,7 +1129,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
    Memo4->Lines->Add(" "); // blank line
    //Memo4->Lines->Add(Formula);
-   Memo4->Lines->Add("Star                 Date   Filter  Grp    Vraw      Vinst    Vex    TranMag      diff     Vrep      VERR    VERRt");
+   Memo4->Lines->Add("Star                 Date        Filter  Grp    Vraw      Vinst    Vex    TranMag      diff       VERR    VERRt");
    // build
    for(i= 0, j= 0; i< Memo1->Lines->Count; i++) {
       s= Memo1->Lines->Strings[i].TrimLeft();
@@ -1146,11 +1150,13 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                Memo2->Lines->Add("#   transform coefficients applied by Transformer Applier, version "+ FormatFloat("0.00", Version));
                Memo2->Lines->Add("#   transform coefficients:");
                for(int i= 0; i<NumTCoef; i++)
-                  Memo2->Lines->Add(st.sprintf("#%s= %0.4f, +/- %0.4f", TC[i].name, *TC[i].value, *TC[i].error));
+                  if(*TC[i].value!=0) // if non-zero
+                     Memo2->Lines->Add(st.sprintf("#%s= %0.4f, +/- %0.4f", TC[i].name, *TC[i].value, *TC[i].error));
                if(applyExtinction->Checked) {
                   Memo2->Lines->Add("#   extinction coefficients:");
                   for(int i= 0; i<NumECoef; i++)
-                     Memo2->Lines->Add(st.sprintf("#%s= %0.4f, +/- %0.4f", EC[i].name, *EC[i].value, *EC[i].error));
+                     if(*EC[i].value!=0) // if non-zero
+                        Memo2->Lines->Add(st.sprintf("#%s= %0.4f, +/- %0.4f", EC[i].name, *EC[i].value, *EC[i].error));
                }
                trans_display= true;
             }
@@ -1219,8 +1225,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
 
             // add a star report line
-            r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f  %8.3f %10.5f %8.3f  %8.3f %8.3f", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
-                                  , sd[j].VMAGraw, sd[j].VMAGinst, sd[j].VMAG, sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep, sd[j].VERR, sd[j].VERRt);
+            r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f  %8.3f %10.5f  %8.3f %8.3f", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
+                                  , sd[j].VMAGraw, sd[j].VMAGinst, sd[j].VMAG, sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAGraw, sd[j].VERR, sd[j].VERRt);
             Memo4->Lines->Add(r);
 
             // add info about the analysis
@@ -1256,6 +1262,21 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          r= r+ s;
       }
       Memo4->Lines->Add(r);
+
+   // show coeffcients
+               Memo4->Lines->Add("\r\n   transform coefficients applied by Transformer Applier, version "+ FormatFloat("0.00", Version));
+               Memo4->Lines->Add("   transform coefficients:");
+               for(int i= 0; i<NumTCoef; i++)
+                  if(*TC[i].value!=0) // if non-zero
+                     Memo4->Lines->Add(st.sprintf("%s= %0.4f, +/- %0.4f", TC[i].name, *TC[i].value, *TC[i].error));
+               if(applyExtinction->Checked) {
+                  Memo4->Lines->Add("   extinction coefficients:");
+                  for(int i= 0; i<NumECoef; i++)
+                     if(*EC[i].value!=0) // if non-zero
+                        Memo4->Lines->Add(st.sprintf("%s= %0.4f, +/- %0.4f", EC[i].name, *EC[i].value, *EC[i].error));
+               }
+
+
    }
 }
 //---------------------------------------------------------------------------
