@@ -140,6 +140,7 @@ __published:	// IDE-managed Components
    TLabel *Label17;
    TButton *changeINIfile;
    TButton *saveasINIfile;
+   TButton *saveButton;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
