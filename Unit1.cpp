@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.12
+#define Version  2.13
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -731,7 +731,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    char delim= ';';
    unsigned short fc; // filter combo and index
    float crefmag= -999, x, creferr;
-   int i, j, k, m, sdi, gdi= 0;
+   int i, j, k, l, m, sdi, gdi= 0;
    AnsiString s, r, sx, st;
 
    // init
@@ -754,7 +754,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
        must have DELIM
        must have OBSCODE
        must have SOFTWARE
-       must have DATE               
+       must have DATE
        must have OBSTYPE
        collect CREFmag, CREFerror
    */
@@ -865,8 +865,11 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          j= s.SubString(k, 20).Pos(delim);
          sd[sdi].CNAME= s.SubString(k, j- 1).TrimLeft().TrimRight();
-         if(sd[sdi].CNAME.Length()>11)  // assume is label + auid
-            sd[sdi].CNAME= sd[sdi].CNAME.SubString(sd[sdi].CNAME.Length()-10, 11);
+         l= sd[sdi].CNAME.Length();
+         if(l>11) { // is it label + auid ?
+            if(sd[sdi].CNAME[l-3]=='-' && sd[sdi].CNAME[l-7]=='-')
+               sd[sdi].CNAME= sd[sdi].CNAME.SubString(l-10, 11); // cut the label
+         }
          k+= j;
          if(sd[sdi].CNAME=="ENSEMBLE") {
             sd[sdi].ensemble= true;
@@ -2141,6 +2144,18 @@ float fTxy (char x, char y, float Txy, float rTxy, int mode) {
     return r;
 }
 
+char * fTx_yzFmt(char x, char y, char z, int mode, char* s) {
+    char X= toupper(x);
+    char Y= toupper(y);
+    char Z= toupper(z);
+    switch(mode) {
+      case 1: sprintf(s, "%cs= %cs + (%cc-%cc) + T%c_%c%c * ((%cs-%cs)-(%cc-%cc))", X, x, X, x, x, y, z, Y, Z, Y, Z);  break;
+      case 2: sprintf(s, "%cs= %cs - (%cc-%cc) + ((%cs-%cs)-(%cc-%cc)) / T%c_%c%c", Y, Z, Y, Z, X, x, X, x, x, y, z);  break;
+      //case 3: r= Zs= Ys + (Yc-Zc) + ((Xs-xs)-(Xc-xc)) / Tx_yz;  break;
+    }
+    return s;
+
+}
 float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode) {
     //Primary or star form:  Tx_yz
     //  slope of (X-x) vs (Y-Z) :
