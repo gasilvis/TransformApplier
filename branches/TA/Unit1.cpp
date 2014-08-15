@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.13
+#define Version  2.14
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -884,8 +884,11 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          j= s.SubString(k, 20).Pos(delim);
          sd[sdi].KNAME= s.SubString(k, j- 1).TrimLeft().TrimRight();
-         if(sd[sdi].KNAME.Length()>11)  // assume is label + auid
-            sd[sdi].KNAME= sd[sdi].KNAME.SubString(sd[sdi].KNAME.Length()-10, 11);
+         l= sd[sdi].KNAME.Length();
+         if(l>11) { // is it label + auid ?
+            if(sd[sdi].KNAME[l-3]=='-' && sd[sdi].KNAME[l-7]=='-')
+               sd[sdi].KNAME= sd[sdi].KNAME.SubString(l-10, 11); // cut the label
+         }
 
          if(sd[sdi].KNAME.UpperCase()=="NO") sd[sdi].KNAME= "na"; // AIP uses NO; webobs wants na
          k+= j;
