@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.14
+#define Version  2.15
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -1307,7 +1307,7 @@ float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode);
 void ProcessStarData(StarData *d, unsigned short fc)
 {
    AnsiString as;
-   float x;    int loop= 0;
+   float x;    int loop;
    d->TRANS= true;
    d->FILTC= fc;  // which combination used
    rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; // default error is the obs error
@@ -1332,25 +1332,25 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BVIR AAVSO using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
             rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1386,58 +1386,27 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTxy( b, v, Tbv, rTbv, 1);
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1);
             Rs = fTxy( v, r, Tvr, rTvr, 2);
             Is = fTxy( r, i, Tri, rTri, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BVIR Arne special using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTxy( b, v, Tbv, rTbv, 11);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
             rRs = fTxy( v, r, Tvr, rTvr, 12);
             rIs = fTxy( r, i, Tri, rTri, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
-
-
-/*
-      case (FILTC_BVRIs):  // VPHOT    guessing
-         if(Tbv==0 || Tv_bv==0 || Tri==0 || Tr_ri==0) {
-            d->ErrorMsg+= " Missing a coefficient; need Tbv, Tv_bv, Tri, and Tr_ri.";
-            d->TRANS= false;
-            break;
-         }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
-            oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1);
-            Vs = fTxy( b, v, Tbv, rTbv, 2);
-            Rs = fTx_yz( r, r, i, Tr_ri, rTr_ri, 1);
-            Is = fTxy( r, i, Tri, rTri, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
-         } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
-         d->StarsUsed= "# BVIR Arne special using: B @ "+ sd[sf[FILT_Bi]].DATEs
-           + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
-            roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            Bs = fTxy( b, v, Tbv, rTbv, 11);
-            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
-            Rs = fTx_yz( r, r, i, Tr_ri, rTr_ri, 11);
-            Is = fTxy( r, i, Tri, rTri, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
-         } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
-         break;
-*/
 
       case FILTC_BVa:
          if(Tb_bv==0 || Tv_bv==0) {
@@ -1445,22 +1414,22 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
             Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1);
             //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             //Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
             rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVs:
@@ -1472,20 +1441,20 @@ void ProcessStarData(StarData *d, unsigned short fc)
          }
          //Bs = bs + (Bc - bc) + Tb_bv * (((Bc - Vc) + Tbv * ((bs - vs) - (bc - vc))) - (Bc - Vc));
          //Vs = Bs - ((Bc - Vc) + Tbv * ((bs - vs) - (bc - vc)));
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
             vs = fTxy(b, v, Tbv, rTbv, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BV classic and alternative using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
             rvs = fTxy(b, v, Tbv, rTbv, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1497,22 +1466,22 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             //Vs = vs + (Vc-vc) + Tv_vr * ((Vs-Rs)-(Vc-Rc));
             //Rs = rs + (Rc-rc) + Tr_vr * ((Vs-Rs)-(Vc-Rc));
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1);
             Rs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 1);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11);
             rRs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 11);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_VRs:
@@ -1524,20 +1493,20 @@ void ProcessStarData(StarData *d, unsigned short fc)
          }
          //Vs = vs + (Vc - vc) + Tv_vr * (((Vc - Rc) + Tvr * ((vs - rs) - (vc - rc))) - (Vc - Rc));
          //Rs = Vs - ((Vc - Rc) + Tvr * ((vs - rs) - (vc - rc)));
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1);
             Rs = fTxy(v, r, Tvr, rTvr, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11);
             rRs = fTxy(v, r, Tvr, rTvr, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1547,7 +1516,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             //Vs = vs + (Vc-vc) + Tv_vi * ((Vs-Is)-(Vc-Ic));
@@ -1556,16 +1525,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1);
             Rs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 1);
             Is = fTxy(v, i, Tvi, rTvi, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+ " using:  V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11);
             rRs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 11);
             rIs = fTxy(v, i, Tvi, rTvi, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_VRIs:
@@ -1574,7 +1543,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             //Vs = vs + (Vc-vc) + Tv_vr    * ((Vs-Rs)-(Vc-Rc));
@@ -1583,16 +1552,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1);
             Rs = fTxy(v, r, Tvr, rTvr, 2);
             Is = fTxy(r, i, Tri, rTri, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using:  V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11);
             rRs = fTxy(v, r, Tvr, rTvr, 12);
             rIs = fTxy(r, i, Tri, rTri, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_VRIc:
@@ -1613,7 +1582,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
@@ -1622,16 +1591,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
             Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1);
             Rs = fTxy(v, r, Tvr, rTvr, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
             rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11);
             rRs = fTxy(v, r, Tvr, rTvr, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVRs:
@@ -1640,7 +1609,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
@@ -1649,16 +1618,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
             Vs = fTxy(b, v, Tbv, rTbv, 2);
             Rs = fTxy(v, r, Tvr, rTvr, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
             rVs = fTxy(b, v, Tbv, rTbv, 12);
             rRs = fTxy(v, r, Tvr, rTvr, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVRc:
@@ -1670,22 +1639,22 @@ void ProcessStarData(StarData *d, unsigned short fc)
          //Vs = vs + (Vc - vc) + Tv_vr * (((Vc - Rc) + Tvr * ((vs - rs) - (vc - rc))) - (Vc - Rc));
          //Rs = Vs - ((Vc - Rc) + Tvr * ((vs - rs) - (vc - rc)));
          //Bs = Vs + (Bc - Vc) +  Tbv * ((bs - vs) - (bc - vc));
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTxy(b, v, Tbv, rTbv, 1);
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1);
             Rs = fTxy(v, r, Tvr, rTvr, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11);
             rRs = fTxy(v, r, Tvr, rTvr, 12);
             rBs = fTxy(b, v, Tbv, rTbv, 11);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1699,20 +1668,20 @@ void ProcessStarData(StarData *d, unsigned short fc)
          }
          //Vs = vs + (Vc - vc) + Tv_vi * (((Vc - Ic) + Tvi * ((vs - is) - (vc - ic))) - (Vc - Ic));
          //Is = Vs - ((Vc - Ic) + Tvi * ((vs - is) - (vc - ic)));
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1);
             Is = fTxy(v, i, Tvi, rTvi, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11);
             rIs = fTxy(v, i, Tvi, rTvi, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1722,7 +1691,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
@@ -1731,16 +1700,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
             Vs = fTxy(b, v, Tbv, rTbv, 2);
             Is = fTxy(v, i, Tvi, rTvi, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
             rVs = fTxy(b, v, Tbv, rTbv, 12);
             rIs = fTxy(v, i, Tvi, rTvi, 12);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVIc:
@@ -1752,22 +1721,22 @@ void ProcessStarData(StarData *d, unsigned short fc)
          //Vs = vs + (Vc - vc) + Tv_vi * (((Vc - Ic) + Tvi * ((vs - is) - (vc - ic))) - (Vc - Ic));
          //Is = Vs - ((Vc - Ic) + Tvi * ((vs - is) - (vc - ic)));
          //Bs = Vs + (Bc - Vc) +  Tbv * ((bs - vs) - (bc - vc));
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTxy(b, v, Tbv, rTbv, 1);
             Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1);
             Is = fTxy(v, i, Tvi, rTvi, 2);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11);
             rIs = fTxy(v, i, Tvi, rTvi, 12);
             rBs = fTxy(b, v, Tbv, rTbv, 11);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVIa:
@@ -1776,22 +1745,22 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= false;
             break;
          }
-         Bs= bs, Vs= vs, Rs= rs, Is= is;
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
-         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris;
-         do { if(++loop > 12) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > 12) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
