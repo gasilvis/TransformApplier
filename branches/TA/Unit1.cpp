@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.16
+#define Version  2.17
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -328,7 +328,7 @@ typedef struct GroupData {
    float      m[16]; // Star BVRI, bvri   Comp BVRI bvri
    AnsiString  ts[4];  // tstamp strings of providers of B V R I data
 } GroupData;
-#define gdiMAX 300
+#define gdiMAX 1000
 GroupData gd[gdiMAX];
 
 
