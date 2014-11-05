@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.17
+#define Version  2.18
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -1154,7 +1154,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             // Standard info blocks will be output once
             if(!trans_display) { // show the transform coefficients
                Memo2->Lines->Add("#   transform coefficients applied by Transformer Applier, version "+ FormatFloat("0.00", Version));
-               Memo2->Lines->Add("#   transform coefficients:");
+               Memo2->Lines->Add("#   transform coefficients from "+ INIfilename + "   "+ DateToStr(Date() )  );
+               Memo2->Lines->Add("#      desc: "+ setupEdit->Text);
                for(int i= 0; i<NumTCoef; i++)
                   if(*TC[i].value!=0) // if non-zero
                      Memo2->Lines->Add(st.sprintf("#%s= %0.4f, +/- %0.4f", TC[i].name, *TC[i].value, *TC[i].error));
@@ -1268,10 +1269,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          r= r+ s;
       }
       Memo4->Lines->Add(r);
+   }
 
    // show coeffcients
                Memo4->Lines->Add("\r\n   transform coefficients applied by Transformer Applier, version "+ FormatFloat("0.00", Version));
-               Memo4->Lines->Add("   transform coefficients:");
+               Memo4->Lines->Add("   transform coefficients from "+ INIfilename+ "   "+ DateToStr(Date()));
+               Memo4->Lines->Add("      desc: "+ setupEdit->Text);
                for(int i= 0; i<NumTCoef; i++)
                   if(*TC[i].value!=0) // if non-zero
                      Memo4->Lines->Add(st.sprintf("%s= %0.4f, +/- %0.4f", TC[i].name, *TC[i].value, *TC[i].error));
@@ -1283,7 +1286,6 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                }
 
 
-   }
 }
 //---------------------------------------------------------------------------
 
