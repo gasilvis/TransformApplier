@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.18
+#define Version  2.19
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -397,6 +397,7 @@ typedef struct StarData { // eg
    AnsiString  KNAME; // 000-BBV-175
    float       KMAG;  // 18.627
    float       AMASS; // 1.2606
+   bool        AMASSna;
    AnsiString  GROUPs; // 0
    AnsiString  CHART; // 080415
    AnsiString  NOTES;
@@ -770,14 +771,17 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
              }
          } else
          if(s.SubString(2, 6)== "DELIM=") {
-            // simple method. assumes the DELIM= x
-            j= 7;
-            while(s[++j]) {
-               if(s[j]!=' ') {
-                  delim= s[j];
-                  break;
-               }
+            if(s.SubString(8, 3).LowerCase()=="tab") delim= '\t';
+            else if(s.SubString(8, 5).LowerCase()=="comma") delim= ',';
+            else { // simple method. assumes the DELIM= x
+               j= 7;
+               while(s[++j]) {
+                  if(s[j]!=' ') {
+                     delim= s[j];
+                     break;
+                  }
             }
+         }
             // tbd  other cases: named variable "tab" or "comma"
          } else
          if(s.SubString(2, 8)== "CREFMAG=") {
@@ -910,7 +914,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          }
          */
          j= s.SubString(k, 20).Pos(delim);
-         sd[sdi].AMASS= s.SubString(k, j- 1).ToDouble();
+         // airmass might be NA
+         if(s.SubString(k,2).LowerCase()=="na") sd[sdi].AMASSna= true;
+         else {
+            sd[sdi].AMASS= s.SubString(k, j- 1).ToDouble();
+            sd[sdi].AMASSna= false;
+         }   
          k+= j;
 
          j= s.SubString(k, 20).Pos(delim);
@@ -974,6 +983,10 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          }
 
          // apply Extinction correction
+         if(applyExtinction->Checked && sd[sdi].AMASSna) {
+            applyExtinction->Checked= false;
+            ShowMessage("Obs found witn AMASS na; Extinction feature turned off");
+         }
          if(applyExtinction->Checked) {
             sd[sdi].CMAGex= sd[sdi].CMAGraw - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
             sd[sdi].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[sdi].CMAGex, sd[sdi].CMAGraw, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
@@ -1219,7 +1232,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   s+="na" , s+= delim;
                else s+= FormatFloat("0.000", sd[j].KMAG)+ delim;
             //}
-            s+= FormatFloat("0.0000", sd[j].AMASS)+ delim;
+            if(sd[j].AMASSna) s+= "na"+ delim;
+            else   s+= FormatFloat("0.0000", sd[j].AMASS)+ delim;
 
             //s+= IntToStr(sd[j].GROUP)+ delim;
             s+= sd[j].GROUPs+ delim;
@@ -2174,6 +2188,8 @@ float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode) {
     }
     return r;
 }
+
+
 
 
 
