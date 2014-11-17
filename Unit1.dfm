@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 149
-  Top = 85
+  Left = 169
+  Top = 61
   Width = 1141
   Height = 783
   HorzScrollBar.Visible = False
@@ -169,6 +169,16 @@ object Form1: TForm1
         Caption = 'Save'
         TabOrder = 10
         OnClick = Save1Click
+      end
+      object UseStdField: TCheckBox
+        Left = 16
+        Top = 632
+        Width = 129
+        Height = 17
+        Hint = 'Chart uses Standard Field photometry'
+        Caption = 'UseStdField'
+        TabOrder = 11
+        OnClick = UseStdFieldClick
       end
     end
     object Coefficients: TTabSheet
@@ -1260,6 +1270,15 @@ object Form1: TForm1
             'ake sure they were grouped in a'
           'reasonable fashion.'
           ''
+          '- Use Std Field check box'
+          
+            '  If your chartid was generated with the "Would you like a Stand' +
+            'ard Field Chart", then check'
+          
+            'this box so TA will know how to fetch that data. This is issue w' +
+            'ith VSP where the chartid is'
+          'not uniquely defining the chart.'
+          ''
           ''
           
             '- If you have problems or issues or questions with or about the ' +
@@ -1322,8 +1341,8 @@ object Form1: TForm1
     DesignFormHeight = 783
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 725
-    DesignFormLeft = 149
-    DesignFormTop = 85
+    DesignFormLeft = 169
+    DesignFormTop = 61
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18
