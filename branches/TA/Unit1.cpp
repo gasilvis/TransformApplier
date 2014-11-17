@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.19
+#define Version  2.20
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -958,7 +958,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                if(!getCREFMAG(&sd[sdi])) {
                   sd[sdi].ErrorMsg+= " No CREFMAG available. Possibly bad chart reference";
                   sd[sdi].processed= true; // skip record
-                  break;  // full break here
+                  //break;  // full break here
                }
             }
          }
@@ -1910,7 +1910,8 @@ int __fastcall checkChart(StarData* sd) {
     bool   auid= false, chartExists= false;
     int  ret= 1, i, labelCnt= 0, labelIndex= 0;
     // CNAME an AUID?
-    if(sd->CNAME.Length()==11) auid= true;
+    if(sd->CNAME.Length()==11 && sd->CNAME[4]=='-' && sd->CNAME[8]=='-')
+       auid= true;
     // look for it in the current chart data
     for(i= 0; i< min(chartnext, chartMAX); i++) {
        if(chart[i].chartid == sd->CHART) { // same chart
@@ -1980,6 +1981,7 @@ int __fastcall getCREFMAG(StarData* sd)
        if(sd->CHART.Length()) { // assuming they gave us a chartid
           AnsiString u= "http://www.aavso.org/cgi-bin/vsp.pl?chartid=";
           u+= sd->CHART; u+= "&delimited=yes";
+          if(Form1->UseStdField->Checked) u+= "&std_field=on";
           //HttpCli1->URL        = "http://www.aavso.org/cgi-bin/vsp.pl?chartid=13221ASP&delimited=yes";
           Form1->HttpCli1->URL        = u;
           Form1->HttpCli1->RcvdStream = NULL;
@@ -2196,4 +2198,11 @@ float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode) {
 
 
 
+
+void __fastcall TForm1::UseStdFieldClick(TObject *Sender)
+{
+    // flush gathered chart data
+    chartnext= 0;
+}
+//---------------------------------------------------------------------------
 

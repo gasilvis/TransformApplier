@@ -141,6 +141,7 @@ __published:	// IDE-managed Components
    TButton *changeINIfile;
    TButton *saveasINIfile;
    TButton *saveButton;
+   TCheckBox *UseStdField;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -159,6 +160,7 @@ __published:	// IDE-managed Components
    void __fastcall applyExtinctionExit(TObject *Sender);
    void __fastcall changeINIfileClick(TObject *Sender);
    void __fastcall saveasINIfileClick(TObject *Sender);
+   void __fastcall UseStdFieldClick(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
