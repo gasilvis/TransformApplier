@@ -42,7 +42,9 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.20
+#define Version  2.21
+   // help note on ensemble
+   // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
 
 /* adding a coefficient:
@@ -739,6 +741,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    // reset flags for displaying information in the output. Only want to display
    // the transforms and the formulas once in the output
    trans_display= false;
+   //chartnext= 0; // reset the chart table?
    for(i= 0; i< FILTC_NUM; i++)
       FILTC_displayed[i]= false;
 
@@ -1226,7 +1229,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             //} else {
                s+= sd[j].CNAME+ delim;
                s+= FormatFloat("0.000", sd[j].CMAGraw)+ delim;
-
+                                 
                s+= sd[j].KNAME+ delim;
                if(sd[j].KNAME=="na")
                   s+="na" , s+= delim;
@@ -1864,7 +1867,7 @@ void __fastcall TForm1::Saveuntransformedobsfile1Click(TObject *Sender)
    SaveDialog1->InitialDir= OpenDialog1->InitialDir;
    SaveDialog1->FileName= UnTransformedFile;
    SaveDialog1->Title= "Save the un-transformed observation file";
-   OpenDialog1->Filter = "TXT files (*.txt)|*.TXT";
+   SaveDialog1->Filter = "TXT files (*.txt)|*.TXT";
    if(SaveDialog1->Execute()) {
       Memo1->Lines->SaveToFile(SaveDialog1->FileName);
    }
@@ -1877,12 +1880,13 @@ void __fastcall TForm1::Saveuntransformedobsfile1Click(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
-
+// save transformed data
 void __fastcall TForm1::Save1Click(TObject *Sender)
 {
    // use same dir as open
    SaveDialog1->InitialDir= OpenDialog1->InitialDir;
    SaveDialog1->Title= "Save the transformed observation file";
+   SaveDialog1->Filter = "TXT files (*.txt)|*.TXT";
    AnsiString f= UnTransformedFile;
    if(f.Length()> 5 && '.'== f[f.Length()- 3]) f= f.SubString(1, f.Length()-4)+ "_TA" + f.SubString(f.Length()-3, 4);
    SaveDialog1->FileName= f;
@@ -1897,6 +1901,30 @@ void __fastcall TForm1::Save1Click(TObject *Sender)
    delete ini;
 }
 //---------------------------------------------------------------------------
+void __fastcall TForm1::SaveReporttofile1Click(TObject *Sender)
+{
+   // use same dir as open
+   SaveDialog1->InitialDir= OpenDialog1->InitialDir;
+   SaveDialog1->Title= "Save the transformation report to file";
+   SaveDialog1->Filter = "TXT files (*.txt)|*.TXT";
+   AnsiString f= UnTransformedFile;
+   if(f.Length()> 5 && '.'== f[f.Length()- 3]) f= f.SubString(1, f.Length()-4)+ "_TA Report" + f.SubString(f.Length()-3, 4);
+   SaveDialog1->FileName= f;
+   if(SaveDialog1->Execute()) {
+      Memo4->Lines->SaveToFile(SaveDialog1->FileName);
+   }
+   OpenDialog1->InitialDir= SaveDialog1->InitialDir;
+   /*
+   // Save the directory
+   TIniFile *ini;
+   ini = new TIniFile(INIfilename);
+   ini->WriteString("Setup", "Dir", OpenDialog1->InitialDir);
+   delete ini;
+   */
+}
+//---------------------------------------------------------------------------
+
+
 
 void __fastcall TForm1::Exit1Click(TObject *Sender)
 {
@@ -2205,4 +2233,16 @@ void __fastcall TForm1::UseStdFieldClick(TObject *Sender)
     chartnext= 0;
 }
 //---------------------------------------------------------------------------
+
+void __fastcall TForm1::CheckBox4Click(TObject *Sender)
+{
+    // suppress clicks on check boxes on the coefficients tab
+    TCheckBox *p;
+    if((p=dynamic_cast<TCheckBox*>(Sender))==NULL)
+       return;
+    p->Checked= false;
+}
+//---------------------------------------------------------------------------
+
+
 
