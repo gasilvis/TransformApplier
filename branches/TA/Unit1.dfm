@@ -180,6 +180,15 @@ object Form1: TForm1
         TabOrder = 11
         OnClick = UseStdFieldClick
       end
+      object AggregateCB: TCheckBox
+        Left = 8
+        Top = 360
+        Width = 137
+        Height = 25
+        Hint = 'Aggregate all common obs'
+        Caption = 'Aggregate'
+        TabOrder = 12
+      end
     end
     object Coefficients: TTabSheet
       Caption = 'Coefficients'

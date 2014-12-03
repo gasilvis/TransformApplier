@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.21
+#define Version  2.22
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -734,8 +734,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    char delim= ';';
    unsigned short fc; // filter combo and index
    float crefmag= -999, x, creferr;
-   int i, j, k, l, m, sdi, gdi= 0;
+   int i, j, k, l, m, sdi, sdii, n, gdi= 0;
    AnsiString s, r, sx, st;
+   StarData sdt;
 
    // init
    // reset flags for displaying information in the output. Only want to display
@@ -783,9 +784,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                      delim= s[j];
                      break;
                   }
+               }
             }
-         }
-            // tbd  other cases: named variable "tab" or "comma"
          } else
          if(s.SubString(2, 8)== "CREFMAG=") {
             if(2 != sscanf(s.SubString(10, s.Length()-9).c_str(),"%f %f",  &crefmag, &creferr)) {
@@ -796,7 +796,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             } // else   the crefmag/err will be picked up by the next star record
          }
 
-      } else { // data line
+      } // end comment line
+        else { // data line
          if(sdi==sdiMAX) {
             ShowMessage("Too many observations in the file.");
             return;
@@ -858,6 +859,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          if(sd[sdi].TRANS) {
             sd[sdi].ErrorMsg+= " Already transformed.";
             sd[sdi].processed= true;
+            sd[sdi].TRANS= false; // we're not doing it, so let it fall through as presented
          }
 
          j= s.SubString(k, 20).Pos(delim);
@@ -904,25 +906,14 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          if(sd[sdi].KNAME!="na")
             sd[sdi].KMAG= s.SubString(k, j- 1).ToDouble();        // will be NO if no check star
          k+= j;
-         /*    not a valid way to do transforms with ensemble data
-         // if ensemble, the check star is K. Move it to C for processing
-         if(sd[sdi].ensemble) {
-            if(sd[sdi].KNAME=="na") {
-               sd[sdi].ErrorMsg+= " Cannot do ensemble without K star data.";
-               sd[sdi].processed= true; // skip this record
-            } else {
-               sd[sdi].CNAME = sd[sdi].KNAME;
-               sd[sdi].CMAGraw  = sd[sdi].KMAG;
-            }
-         }
-         */
+
          j= s.SubString(k, 20).Pos(delim);
          // airmass might be NA
          if(s.SubString(k,2).LowerCase()=="na") sd[sdi].AMASSna= true;
          else {
             sd[sdi].AMASS= s.SubString(k, j- 1).ToDouble();
             sd[sdi].AMASSna= false;
-         }   
+         }
          k+= j;
 
          j= s.SubString(k, 20).Pos(delim);
@@ -1006,9 +997,63 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          sd[sdi].VMAG= sd[sdi].VMAGex;
          sd[sdi].narr+= st.sprintf("\r\n%cs= %0.3f +/- %0.3f", tolower(FILTname[sd[sdi].filter]), sd[sdi].VMAG, sd[sdi].VERR);
 
-      }
-   }
+      } // end data line
+   } // end loop through input lines
    sdi++; // sdi is the number of obs collected
+
+   if(AggregateCB->Checked) {
+      /*
+      scan sd for common NAME, FILTER, CNAME, KNAME, not TRANS, MTYPE,
+      if multiple create new sd record with
+         combined date, VMAG, VERR, CMAG, KMAG, AIRMASS, blank GROUP, CHART of 0 rec, combined notes
+         comment out detailed records with "# aggregated: "
+         add new record to sd[sdi++]   carefull.
+
+      */
+      sdii= sdi; // because sdi will increase
+      for(i= 0; i< sdii; i++) {
+         if(!sd[i].processed && !sd[i].TRANS) {
+            sdt= sd[i]; // aggregate record, start with i record
+            sdt.VERR= sdt.VERR*sdt.VERR;
+            for(j= i+1, n= 1; j<sdii; j++) {
+                if(!sd[j].processed &&
+                   !sd[j].TRANS    &&
+                   sd[j].NAME ==   sd[i].NAME &&
+                   sd[j].FILT ==   sd[i].FILT &&
+                   sd[j].CNAME ==  sd[i].CNAME &&
+                   sd[j].KNAME ==  sd[i].KNAME &&
+                   sd[j].MTYPE ==  sd[i].MTYPE
+                   ) {
+                   n++;
+                   sdt.DATE+= sd[j].DATE;
+                   sdt.VMAG+= sd[j].VMAG;
+                   sdt.VERR+= sd[j].VERR*sd[j].VERR;
+                   sdt.CMAG+= sd[j].CMAG;
+                   sdt.KMAG+= sd[j].KMAG;
+                   sdt.AMASS+= sd[j].AMASS;
+                   sdt.NOTES+= sd[j].NOTES;
+                   // kill j record, falling through as comment
+                   sd[j].record= "# aggregated "+ sd[j].record;
+                   sd[j].processed= true;
+                }
+            }
+            if(n>1) {
+               // kill i record, falling through as comment
+               sd[i].record= "# aggregated "+ sd[i].record;
+               sd[i].processed= true;
+               sdt.DATE/= n;
+               sdt.VMAG/= n;
+               sdt.VERR= sqrt(sdt.VERR);
+               sdt.CMAG/= n;
+               sdt.KMAG/= n;
+               sdt.AMASS/= n;
+               // rewrite .record   todo
+               // put into narr too
+               sd[sdi++]= sdt; // add to sd array
+            }
+         }
+      } // end aggregate loop
+   } // if aggregate data
 
    // process
    do {
@@ -1144,31 +1189,34 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    } while(42);  // no cs will break us out
 
 
-
+   // display the data
    //ShowMessage("Review the convergence of the New formulas (if any)");
    Memo2->Lines->Clear(); // output window
 //   Memo4->Lines->Clear(); // report window
 
    Memo4->Lines->Add(" "); // blank line
    //Memo4->Lines->Add(Formula);
-   Memo4->Lines->Add("Star                 Date        Filter  Grp    Vraw      Vinst    Vex    TranMag      diff       VERR    VERRt");
+   Memo4->Lines->Add("Star                 Date    Filter Grp    Vraw      Vinst    Vex    TranMag      diff       VERR    VERRt");
    // build
-   for(i= 0, j= 0; i< Memo1->Lines->Count; i++) {
-      s= Memo1->Lines->Strings[i].TrimLeft();
+   for(i= 0, j= 0; i< Memo1->Lines->Count || j< sdi; i++) {
+      if(i< Memo1->Lines->Count) s= Memo1->Lines->Strings[i].TrimLeft();
+      else s= "  "; // to fall through to data line
       if(s.Length()!=0) // skip if blank
       if(s[1]=='#') { // non-data line
          Memo2->Lines->Add(s); // just copy
       } else { // data line
-         if(!sd[j].TRANS) { // not Transformed
-            Memo2->Lines->Add(s); // just copy original
+         if(sd[j].record[1]=='#') { // record aggregated
+            Memo2->Lines->Add(sd[j].record); // just copy
+         } else if(!sd[j].TRANS) { // not Transformed by TA
+            Memo2->Lines->Add(sd[j].record); //     Add(s); // just copy original
             //r.sprintf("%s %s %8.3f NA", sd[j].NAME, sd[j].DATEs, sd[j].VMAG);
             //? where was this to go? Not here:   Memo2->Lines->Add(r);
             r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f    not transformed", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
                                   , sd[j].VMAGraw, sd[j].VMAGinst, sd[j].VMAG );// ,    sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep, sd[j].VERR, sd[j].VERRt);
             Memo4->Lines->Add(r);
-        } else {  // display transformed data    ?? what if it was transformed in the input, thus skipped?
+        } else {  // display transformed data
             // Standard info blocks will be output once
-            if(!trans_display) { // show the transform coefficients
+            if(!trans_display) { // show the transform coefficients just once
                Memo2->Lines->Add("#   transform coefficients applied by Transformer Applier, version "+ FormatFloat("0.00", Version));
                Memo2->Lines->Add("#   transform coefficients from "+ INIfilename + "   "+ DateToStr(Date() )  );
                Memo2->Lines->Add("#      desc: "+ setupEdit->Text);
@@ -1183,27 +1231,11 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                }
                trans_display= true;
             }
-            //for(k= 0; k< FILTC_NUM; k++) {
-            //   if(sd[j].FILTC==FILTC_mask[k]) {
-            /*   appears in narrative
-                   k= FILTC_mask2index(sd[j].FILTC);
-                   if(!FILTC_displayed[k]) { // if it has not been displayed
-                      for(m= 0; m<FILTC_desc_rows; m++) {
-                         if(FILTC_desc[k][m]!= NULL) {
-                            Memo2->Lines->Add(FILTC_desc[k][m]);
-                            Memo4->Lines->Add(FILTC_desc[k][m]);
-                         }
-                      }
-                      FILTC_displayed[k]= true; // so we don't display again
-                   }
-             */
-            //   }
-            // }
 
             // show un-transformed data as a comment
-            Memo2->Lines->Add((IncludeRaw->Checked?"":"#")+ s);
+            Memo2->Lines->Add((IncludeRaw->Checked?"":"#")+ sd[j].record);
 
-            // now the transformed data
+            // now the transformed data: fmt record from sd
             s= sd[j].NAME+ delim;
 
             s+= FormatFloat("#.00000", sd[j].DATE)+ delim;
@@ -1222,19 +1254,13 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             }
             s+= delim;
 
-            //if(sd[j].ensemble) {
-            //   s+= "ENSEMBLE"+ delim; s+= "NA"+ delim;   // cname data
-            //   s+= sd[j].CNAME+ delim; // kname was stored here
-            //   s+= FormatFloat("0.000", sd[j].CMAGraw)+ delim;
-            //} else {
-               s+= sd[j].CNAME+ delim;
-               s+= FormatFloat("0.000", sd[j].CMAGraw)+ delim;
-                                 
-               s+= sd[j].KNAME+ delim;
-               if(sd[j].KNAME=="na")
-                  s+="na" , s+= delim;
-               else s+= FormatFloat("0.000", sd[j].KMAG)+ delim;
-            //}
+            s+= sd[j].CNAME+ delim;
+            s+= FormatFloat("0.000", sd[j].CMAGraw)+ delim;
+
+            s+= sd[j].KNAME+ delim;
+            if(sd[j].KNAME=="na") s+="na" , s+= delim;
+            else s+= FormatFloat("0.000", sd[j].KMAG)+ delim;
+
             if(sd[j].AMASSna) s+= "na"+ delim;
             else   s+= FormatFloat("0.0000", sd[j].AMASS)+ delim;
 
@@ -1261,16 +1287,21 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             Memo2->Lines->Add("#"+ sd[j].ErrorMsg);
 
          j++;
-      }
-   }
+      } // end of data line
+   } // end loop of input lines
+
+   //todo display records if j short of sdi
+
 
    // do a detail, narrative report
 
    Memo4->Lines->Add("\r\n    Detail narrative for each observation  \r\n");
    for(i= 0; i<sdi; i++) {
-      sd[i].narr+= "\r\n"+ sd[i].recordT;
-      Memo4->Lines->Add(sd[i].narr);
-      Memo4->Lines->Add(sd[i].ErrorMsg + "\r\n");
+      if(sd[i].record[1 ]!='#') { // not aggregated
+         sd[i].narr+= "\r\n"+ sd[i].recordT;
+         Memo4->Lines->Add(sd[i].narr);
+         Memo4->Lines->Add(sd[i].ErrorMsg + "\r\n");
+      }
    }
 
    // extinction report

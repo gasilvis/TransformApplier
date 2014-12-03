@@ -144,6 +144,7 @@ __published:	// IDE-managed Components
    TLabel *Label27;
    TLabel *Label28;
    TMenuItem *SaveReporttofile1;
+   TCheckBox *AggregateCB;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
