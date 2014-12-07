@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 161
-  Top = 125
+  Left = 165
+  Top = 166
   Width = 1141
   Height = 783
   HorzScrollBar.Visible = False
@@ -44,14 +44,6 @@ object Form1: TForm1
         Caption = 
           'The transformed records are here after you hit the Process butto' +
           'n'
-      end
-      object VersionLabel: TLabel
-        Left = 28
-        Top = 3
-        Width = 97
-        Height = 21
-        Caption = 'Version 0.1'
-        Visible = False
       end
       object Memo2: TMemo
         Left = 152
@@ -797,266 +789,6 @@ object Form1: TForm1
           TabOrder = 53
           OnExit = NumericOnExit
         end
-        object GroupBox2: TGroupBox
-          Left = 816
-          Top = 24
-          Width = 249
-          Height = 457
-          Caption = 'Extinction'
-          TabOrder = 54
-          object Label23: TLabel
-            Left = 136
-            Top = 248
-            Width = 43
-            Height = 21
-            Caption = 'error'
-          end
-          object Label15: TLabel
-            Left = 112
-            Top = 32
-            Width = 92
-            Height = 21
-            Caption = 'coefficient'
-          end
-          object Label24: TLabel
-            Left = 64
-            Top = 280
-            Width = 12
-            Height = 23
-            Caption = 'B'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-          end
-          object Label25: TLabel
-            Left = 64
-            Top = 312
-            Width = 12
-            Height = 23
-            Caption = 'V'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-          end
-          object Label26: TLabel
-            Left = 64
-            Top = 344
-            Width = 12
-            Height = 23
-            Caption = 'R'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-          end
-          object Label27: TLabel
-            Left = 61
-            Top = 376
-            Width = 12
-            Height = 23
-            Caption = 'I'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-          end
-          object Label28: TLabel
-            Left = 64
-            Top = 408
-            Width = 12
-            Height = 23
-            Caption = 'U'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-            Visible = False
-          end
-          object rEuEdit: TEdit
-            Left = 112
-            Top = 400
-            Width = 121
-            Height = 29
-            TabOrder = 0
-            Visible = False
-            OnExit = NumericOnExit
-          end
-          object rEiEdit: TEdit
-            Left = 112
-            Top = 368
-            Width = 121
-            Height = 29
-            TabOrder = 1
-            OnExit = NumericOnExit
-          end
-          object rErEdit: TEdit
-            Left = 112
-            Top = 336
-            Width = 121
-            Height = 29
-            TabOrder = 2
-            OnExit = NumericOnExit
-          end
-          object rEvEdit: TEdit
-            Left = 112
-            Top = 304
-            Width = 121
-            Height = 29
-            TabOrder = 3
-            OnExit = NumericOnExit
-          end
-          object rEbEdit: TEdit
-            Left = 112
-            Top = 272
-            Width = 121
-            Height = 29
-            TabOrder = 4
-            OnExit = NumericOnExit
-          end
-          object EuEdit: TEdit
-            Left = 104
-            Top = 184
-            Width = 121
-            Height = 29
-            TabOrder = 5
-            Visible = False
-            OnExit = NumericOnExit
-          end
-          object EiEdit: TEdit
-            Left = 104
-            Top = 152
-            Width = 121
-            Height = 29
-            TabOrder = 6
-            OnExit = NumericOnExit
-          end
-          object ErEdit: TEdit
-            Left = 104
-            Top = 120
-            Width = 121
-            Height = 29
-            TabOrder = 7
-            OnExit = NumericOnExit
-          end
-          object EvEdit: TEdit
-            Left = 104
-            Top = 88
-            Width = 121
-            Height = 29
-            TabOrder = 8
-            OnExit = NumericOnExit
-          end
-          object EbEdit: TEdit
-            Left = 104
-            Top = 56
-            Width = 121
-            Height = 29
-            TabOrder = 9
-            OnExit = NumericOnExit
-          end
-          object applyExtinction: TCheckBox
-            Left = 8
-            Top = 32
-            Width = 81
-            Height = 17
-            Caption = 'apply'
-            TabOrder = 10
-            OnExit = applyExtinctionExit
-          end
-          object CheckBox4: TCheckBox
-            Left = 32
-            Top = 62
-            Width = 50
-            Height = 20
-            Hint = 'slope of (B-b) versus (B-V)'
-            Caption = 'B'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-            TabOrder = 11
-            OnClick = CheckBox4Click
-          end
-          object CheckBox5: TCheckBox
-            Left = 32
-            Top = 94
-            Width = 50
-            Height = 20
-            Hint = 'slope of (B-b) versus (B-V)'
-            Caption = 'V'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-            TabOrder = 12
-            OnClick = CheckBox4Click
-          end
-          object CheckBox6: TCheckBox
-            Left = 32
-            Top = 126
-            Width = 50
-            Height = 20
-            Hint = 'slope of (B-b) versus (B-V)'
-            Caption = 'R'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-            TabOrder = 13
-            OnClick = CheckBox4Click
-          end
-          object CheckBox7: TCheckBox
-            Left = 32
-            Top = 158
-            Width = 50
-            Height = 20
-            Hint = 'slope of (B-b) versus (B-V)'
-            Caption = 'I'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-            TabOrder = 14
-            OnClick = CheckBox4Click
-          end
-          object CheckBox8: TCheckBox
-            Left = 32
-            Top = 190
-            Width = 50
-            Height = 20
-            Hint = 'slope of (B-b) versus (B-V)'
-            Caption = 'U'
-            Font.Charset = ANSI_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -20
-            Font.Name = 'Courier New'
-            Font.Style = [fsBold]
-            ParentFont = False
-            TabOrder = 15
-            Visible = False
-            OnClick = CheckBox4Click
-          end
-        end
       end
       object setupEdit: TEdit
         Left = 112
@@ -1124,6 +856,213 @@ object Form1: TForm1
         Caption = 'Clear'
         TabOrder = 2
         OnClick = Button3Click
+      end
+    end
+    object TabSheet3: TTabSheet
+      Caption = 'Extinction'
+      ImageIndex = 4
+      object GroupBox2: TGroupBox
+        Left = 16
+        Top = 16
+        Width = 385
+        Height = 233
+        Caption = 'Coefficients'
+        TabOrder = 0
+        object Label23: TLabel
+          Left = 264
+          Top = 32
+          Width = 43
+          Height = 21
+          Caption = 'error'
+        end
+        object Label15: TLabel
+          Left = 136
+          Top = 32
+          Width = 48
+          Height = 21
+          Caption = 'value'
+        end
+        object rEuEdit: TEdit
+          Left = 240
+          Top = 184
+          Width = 121
+          Height = 29
+          TabOrder = 0
+          Visible = False
+          OnExit = NumericOnExit
+        end
+        object rEiEdit: TEdit
+          Left = 240
+          Top = 152
+          Width = 121
+          Height = 29
+          TabOrder = 1
+          OnExit = NumericOnExit
+        end
+        object rErEdit: TEdit
+          Left = 240
+          Top = 120
+          Width = 121
+          Height = 29
+          TabOrder = 2
+          OnExit = NumericOnExit
+        end
+        object rEvEdit: TEdit
+          Left = 240
+          Top = 88
+          Width = 121
+          Height = 29
+          TabOrder = 3
+          OnExit = NumericOnExit
+        end
+        object rEbEdit: TEdit
+          Left = 240
+          Top = 56
+          Width = 121
+          Height = 29
+          TabOrder = 4
+          OnExit = NumericOnExit
+        end
+        object EuEdit: TEdit
+          Left = 104
+          Top = 184
+          Width = 121
+          Height = 29
+          TabOrder = 5
+          Visible = False
+          OnExit = NumericOnExit
+        end
+        object EiEdit: TEdit
+          Left = 104
+          Top = 152
+          Width = 121
+          Height = 29
+          TabOrder = 6
+          OnExit = NumericOnExit
+        end
+        object ErEdit: TEdit
+          Left = 104
+          Top = 120
+          Width = 121
+          Height = 29
+          TabOrder = 7
+          OnExit = NumericOnExit
+        end
+        object EvEdit: TEdit
+          Left = 104
+          Top = 88
+          Width = 121
+          Height = 29
+          TabOrder = 8
+          OnExit = NumericOnExit
+        end
+        object EbEdit: TEdit
+          Left = 104
+          Top = 56
+          Width = 121
+          Height = 29
+          TabOrder = 9
+          OnExit = NumericOnExit
+        end
+        object applyExtinction: TCheckBox
+          Left = 8
+          Top = 32
+          Width = 81
+          Height = 17
+          Caption = 'apply'
+          TabOrder = 10
+          OnExit = applyExtinctionExit
+        end
+        object CheckBox4: TCheckBox
+          Left = 32
+          Top = 62
+          Width = 50
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'B'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -20
+          Font.Name = 'Courier New'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 11
+          OnClick = CheckBox4Click
+        end
+        object CheckBox5: TCheckBox
+          Left = 32
+          Top = 94
+          Width = 50
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'V'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -20
+          Font.Name = 'Courier New'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 12
+          OnClick = CheckBox4Click
+        end
+        object CheckBox6: TCheckBox
+          Left = 32
+          Top = 126
+          Width = 50
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'R'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -20
+          Font.Name = 'Courier New'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 13
+          OnClick = CheckBox4Click
+        end
+        object CheckBox7: TCheckBox
+          Left = 32
+          Top = 158
+          Width = 50
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'I'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -20
+          Font.Name = 'Courier New'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 14
+          OnClick = CheckBox4Click
+        end
+        object CheckBox8: TCheckBox
+          Left = 32
+          Top = 190
+          Width = 50
+          Height = 20
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'U'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -20
+          Font.Name = 'Courier New'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 15
+          Visible = False
+          OnClick = CheckBox4Click
+        end
+      end
+      object Button5: TButton
+        Left = 544
+        Top = 72
+        Width = 75
+        Height = 25
+        Caption = 'Button5'
+        TabOrder = 1
+        OnClick = Button5Click
       end
     end
     object TabSheet2: TTabSheet
@@ -1351,7 +1290,6 @@ object Form1: TForm1
     Height = 25
     Caption = 'Button1'
     TabOrder = 1
-    Visible = False
     OnClick = Button1Click
   end
   object MainMenu1: TMainMenu
@@ -1391,8 +1329,8 @@ object Form1: TForm1
     DesignFormHeight = 783
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 725
-    DesignFormLeft = 161
-    DesignFormTop = 125
+    DesignFormLeft = 165
+    DesignFormTop = 166
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18
@@ -1433,7 +1371,7 @@ object Form1: TForm1
     OnDocBegin = HttpCli1DocBegin
     OnDocEnd = HttpCli1DocEnd
     SocksAuthentication = socksNoAuthentication
-    Left = 244
-    Top = 486
+    Left = 140
+    Top = 606
   end
 end

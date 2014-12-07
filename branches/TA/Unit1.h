@@ -34,7 +34,6 @@ __published:	// IDE-managed Components
    TButton *ProcessButton;
    TButton *ToClipboardButton;
    TLabel *Label7;
-   TLabel *VersionLabel;
    TMenuItem *Open1;
    TMenuItem *Save1;
    TMenuItem *Exit1;
@@ -119,32 +118,29 @@ __published:	// IDE-managed Components
    TButton *saveasINIfile;
    TButton *saveButton;
    TCheckBox *UseStdField;
+   TMenuItem *SaveReporttofile1;
+   TCheckBox *AggregateCB;
+   TTabSheet *TabSheet3;
    TGroupBox *GroupBox2;
+   TLabel *Label23;
+   TLabel *Label15;
    TEdit *rEuEdit;
    TEdit *rEiEdit;
    TEdit *rErEdit;
    TEdit *rEvEdit;
    TEdit *rEbEdit;
-   TLabel *Label23;
    TEdit *EuEdit;
    TEdit *EiEdit;
    TEdit *ErEdit;
    TEdit *EvEdit;
    TEdit *EbEdit;
-   TLabel *Label15;
    TCheckBox *applyExtinction;
    TCheckBox *CheckBox4;
    TCheckBox *CheckBox5;
    TCheckBox *CheckBox6;
    TCheckBox *CheckBox7;
    TCheckBox *CheckBox8;
-   TLabel *Label24;
-   TLabel *Label25;
-   TLabel *Label26;
-   TLabel *Label27;
-   TLabel *Label28;
-   TMenuItem *SaveReporttofile1;
-   TCheckBox *AggregateCB;
+   TButton *Button5;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -166,6 +162,7 @@ __published:	// IDE-managed Components
    void __fastcall UseStdFieldClick(TObject *Sender);
    void __fastcall CheckBox4Click(TObject *Sender);
    void __fastcall SaveReporttofile1Click(TObject *Sender);
+   void __fastcall Button5Click(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
