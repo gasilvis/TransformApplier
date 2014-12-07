@@ -158,8 +158,7 @@ Coef EC[]= { // matches filter enum  eg FILT_Bi
 
 void __fastcall TForm1::FormCreate(TObject *Sender)
 {
-   VersionLabel->Caption= "Version "+ FormatFloat("0.00", Version);
-   Form1->Caption= "TA, the AAVSO Transform Applier application, "+ FormatFloat("0.00", Version);
+   Form1->Caption= "TA, the AAVSO Transform Applier application, "+ FormatFloat("version 0.00", Version);
    //nb  The labels are now checkboxes
    // have to assign here because they don't exist until here
    TC[0].coeflab= Label1,   TC[0].coefedit= TbvEdit;  TC[0].erroredit= rTbvEdit;
@@ -359,10 +358,10 @@ Z BOO;2454572.64069;9.332;0.002;V;NO;ABS;000-BBV-178;17.591;000-BBV-175;18.627;1
 
 
 typedef struct StarData { // eg
-   AnsiString  record; // line from the submitted observation file
+   AnsiString  record; // line from the submitted obs file
    AnsiString  narr;  // narrative
    AnsiString  recordT; // line to the output file
-   int         gdi;   // index into the GD array   //deprecated
+   int         gdi;   // index into the GD array //deprecated
    GroupData   gd;
    AnsiString  NAME;  // Z BOO
    double      DATE;  // 2454572.64069
@@ -375,20 +374,7 @@ typedef struct StarData { // eg
    float       VMAGrep;
    float       VERR;    // raw
    float       VERRt;   // transformed
-   AnsiString  FILT;  /*
-    * U: Johnson U
-    * B: Johnson B
-    * V: Johnson V
-    * R: Cousins R
-    * I: Cousins I
-    * J: NIR 1.2 micron
-    * H: NIR 1.6 micron
-    * K: NIR 2.2 micron
-    * TG: Green Filter
-    * Z: Sloan Z
-    * CV: Clear (unfiltered), V-band comp star magnitudes (this is more common than CR)
-    * CR: Clear (unfiltered), R-band comp star magnitudes
-                      */
+   AnsiString  FILT;  // U: Johnson U,  B: Johnson B  etc
    bool        TRANS; // YES or NO
    char        MTYPE; // A for ABS, D for DIF, S for STD
    AnsiString  CNAME; // 000-BBV-178
@@ -406,9 +392,9 @@ typedef struct StarData { // eg
 
    bool        processed;
    char        filter;// index into filter list
-   float       CREFmag; // reference magnitude of the comparison star
+   float       CREFmag; // ref mag of the comparison star
    float       CREFerr;
-   unsigned short FILTC; // filter combination the star is mixed in with
+   unsigned short FILTC; // filter combo the star is mixed with
    AnsiString  StarsUsed;
    AnsiString  ErrorMsg;   // collect comments here to be displayed after the obs is printed
    bool        ensemble;
@@ -670,7 +656,7 @@ AnsiString FILTC_desc[FILTC_NUM][FILTC_desc_rows]= {
     ,NULL
    }
    ,
-   {   // FILTC_VRa  
+   {   // FILTC_VRa
      "# VR, AAVSO recommended"
     ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is as observed"
     ,"# Vs = vs + (Vc-vc) + Tv_vr * ((Vs-Rs)-(Vc-Rc))"
@@ -956,46 +942,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                }
             }
          }
-         // final check
-         if(sd[sdi].CREFmag == 0) {
-            sd[sdi].ErrorMsg+= " CREFMAG is 0.";
-            sd[sdi].processed= true;
-         } else {
-            sd[sdi].narr+= st.sprintf("\r\nCREFMAG= %cc= %0.3f +/- %0.3f", toupper(FILTname[sd[sdi].filter]), sd[sdi].CREFmag, sd[sdi].CREFerr);
-         }
 
-         // correct VMAG from AIPWIN reported value to observed value
-         if(sd[sdi].MTYPE == 'S') { // "STD"
-            sd[sdi].VMAGinst= sd[sdi].VMAGraw + sd[sdi].CMAGraw - sd[sdi].CREFmag;
-            sd[sdi].narr+= st.sprintf("\r\nSTD inst mag: Vinst= %0.3f = %0.3f + %0.3f - %0.3f", sd[sdi].VMAGinst, sd[sdi].VMAGraw, sd[sdi].CMAGraw, sd[sdi].CREFmag);
-         } else if(sd[sdi].MTYPE == 'A') { // "ABS"     deprecated; will have been changed to STD
-            sd[sdi].VMAGinst= sd[sdi].VMAGraw;
-            sd[sdi].narr+= st.sprintf("\r\nABS inst mag: Vinst= %0.3f = %0.3f ", sd[sdi].VMAGinst, sd[sdi].VMAGraw);
-         } else { //if(sd[sdi].MTYPE == 'D') { // "DIF"
-            sd[sdi].VMAGinst= sd[sdi].VMAGraw + sd[sdi].CMAGraw;
-            sd[sdi].narr+= st.sprintf("\r\nDIF inst mag: Vinst= %0.3f = %0.3f + %0.3f ", sd[sdi].VMAGinst, sd[sdi].VMAGraw, sd[sdi].CMAGraw);
-         }
 
-         // apply Extinction correction
-         if(applyExtinction->Checked && sd[sdi].AMASSna) {
-            applyExtinction->Checked= false;
-            ShowMessage("Obs found witn AMASS na; Extinction feature turned off");
-         }
-         if(applyExtinction->Checked) {
-            sd[sdi].CMAGex= sd[sdi].CMAGraw - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
-            sd[sdi].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[sdi].CMAGex, sd[sdi].CMAGraw, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
-            sd[sdi].VMAGex= sd[sdi].VMAGinst  - *Extinction[sd[sdi].filter] * sd[sdi].AMASS; //      Mobs - K * Airmass
-            sd[sdi].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[sdi].VMAGex, sd[sdi].VMAGinst, *Extinction[sd[sdi].filter], sd[sdi].AMASS); //      Mobs - K * Airmass
-         } else {
-            sd[sdi].CMAGex= sd[sdi].CMAGraw;
-            sd[sdi].VMAGex= sd[sdi].VMAGinst;
-         }
-         // corrections done
-         sd[sdi].CMAG= sd[sdi].CMAGex;
-         sd[sdi].CERR= 0; // same error as vmag, fully correlated
-         sd[sdi].narr+= st.sprintf("\r\n%cc= %0.3f +/- %0.3f (assume correlated with v error)", tolower(FILTname[sd[sdi].filter]), sd[sdi].CMAG, sd[sdi].CERR);
-         sd[sdi].VMAG= sd[sdi].VMAGex;
-         sd[sdi].narr+= st.sprintf("\r\n%cs= %0.3f +/- %0.3f", tolower(FILTname[sd[sdi].filter]), sd[sdi].VMAG, sd[sdi].VERR);
 
       } // end data line
    } // end loop through input lines
@@ -1014,8 +962,10 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
       for(i= 0; i< sdii; i++) {
          if(!sd[i].processed && !sd[i].TRANS) {
             sdt= sd[i]; // aggregate record, start with i record
-            sdt.VERR= sdt.VERR*sdt.VERR;
-            for(j= i+1, n= 1; j<sdii; j++) {
+            // to get the SDOM for VERR, we'll use
+            // VMAGraw as sum of VMAGraw's and VERR sum of VMAGraw^2 with an offset by sd[i].VMAG
+            sdt.VMAGraw= sdt.VERR= 0; // so its starts as 0
+            for(j= i+1, n= 1; j<sdii; j++) { // scan the rest for matches
                 if(!sd[j].processed &&
                    !sd[j].TRANS    &&
                    sd[j].NAME ==   sd[i].NAME &&
@@ -1026,9 +976,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                    ) {
                    n++;
                    sdt.DATE+= sd[j].DATE;
-                   sdt.VMAG+= sd[j].VMAG;
-                   sdt.VERR+= sd[j].VERR*sd[j].VERR;
-                   sdt.CMAG+= sd[j].CMAG;
+                   sdt.VMAGraw+= sd[j].VMAGraw- sd[i].VMAGraw;
+                   sdt.VERR+= (sd[j].VMAGraw- sd[i].VMAGraw) * (sd[j].VMAGraw- sd[i].VMAGraw);
+                   sdt.CMAGraw+= sd[j].CMAGraw;
                    sdt.KMAG+= sd[j].KMAG;
                    sdt.AMASS+= sd[j].AMASS;
                    sdt.NOTES+= sd[j].NOTES;
@@ -1042,18 +992,91 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                sd[i].record= "# aggregated "+ sd[i].record;
                sd[i].processed= true;
                sdt.DATE/= n;
-               sdt.VMAG/= n;
-               sdt.VERR= sqrt(sdt.VERR);
-               sdt.CMAG/= n;
+               // Standard Deviation of the Mean
+               x= (sdt.VERR- sdt.VMAGraw*sdt.VMAGraw / n )/ (n-1);
+               sdt.VERR= (x>=0)? sqrt(x/n): 0;
+               sdt.VMAGraw/= n; sdt.VMAGraw+= sd[i].VMAGraw; // put offset back in
+               sdt.CMAGraw/= n;
                sdt.KMAG/= n;
                sdt.AMASS/= n;
                // rewrite .record   todo
-               // put into narr too
+               s= sdt.NAME+ delim;
+               sdt.DATEs= FormatFloat("#.00000", sdt.DATE);
+               s+= sdt.DATEs+ delim;
+               s+= FormatFloat("0.000", sdt.VMAGraw)+ delim;
+               s+= FormatFloat("0.000", sdt.VERR)+ delim;
+               s+= sdt.FILT+ delim;
+               s+= sdt.TRANS? "YES": "NO"; s+= delim;
+               switch(sdt.MTYPE) {
+                  case 'A': s+= "ABS"; break;
+                  case 'D': s+= "DIF"; break;
+                  case 'S': s+= "STD"; break;
+               } s+= delim;
+               s+= sdt.CNAME+ delim;
+               s+= FormatFloat("0.000", sdt.CMAGraw)+ delim;
+               s+= sdt.KNAME+ delim;
+               if(sdt.KNAME=="na") s+="na" , s+= delim;
+               else s+= FormatFloat("0.000", sdt.KMAG)+ delim;
+               if(sdt.AMASSna) s+= "na"+ delim;
+               else   s+= FormatFloat("0.0000", sdt.AMASS)+ delim;
+               s+= sdt.GROUPs+ delim;
+               s+= sdt.CHART+ delim;
+               s+= sdt.NOTES;
+               sdt.record= s;
+               sdt.narr= s;
                sd[sdi++]= sdt; // add to sd array
             }
          }
       } // end aggregate loop
    } // if aggregate data
+
+   // prep phase
+   for(i= 0; i< sdi; i++) {
+      if(sd[i].processed==false) {
+         // final check
+         if(sd[i].CREFmag == 0) {
+            sd[i].ErrorMsg+= " CREFMAG is 0.";
+            sd[i].processed= true;
+         } else{
+            sd[i].narr+= st.sprintf("\r\nCREFMAG= %cc= %0.3f +/- %0.3f", toupper(FILTname[sd[i].filter]), sd[i].CREFmag, sd[i].CREFerr);
+         }
+
+         // correct VMAG from AIPWIN reported value to observed value
+         if(sd[i].MTYPE == 'S') { // "STD"
+            sd[i].VMAGinst= sd[i].VMAGraw + sd[i].CMAGraw - sd[i].CREFmag;
+            sd[i].narr+= st.sprintf("\r\nSTD inst mag: Vinst= %0.3f = %0.3f + %0.3f - %0.3f", sd[i].VMAGinst, sd[i].VMAGraw, sd[i].CMAGraw, sd[i].CREFmag);
+         } else if(sd[i].MTYPE == 'A') { // "ABS"     deprecated; will have been changed to STD
+            sd[i].VMAGinst= sd[i].VMAGraw;
+            sd[i].narr+= st.sprintf("\r\nABS inst mag: Vinst= %0.3f = %0.3f ", sd[i].VMAGinst, sd[i].VMAGraw);
+         } else { //if(sd[i].MTYPE == 'D') { // "DIF"
+            sd[i].VMAGinst= sd[i].VMAGraw + sd[i].CMAGraw;
+            sd[i].narr+= st.sprintf("\r\nDIF inst mag: Vinst= %0.3f = %0.3f + %0.3f ", sd[i].VMAGinst, sd[i].VMAGraw, sd[i].CMAGraw);
+         }
+
+         // apply Extinction correction
+         if(applyExtinction->Checked && sd[i].AMASSna) {
+            applyExtinction->Checked= false;
+            ShowMessage("Obs found witn AMASS na; Extinction feature turned off");
+         }
+         if(applyExtinction->Checked) {
+            sd[i].CMAGex= sd[i].CMAGraw - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
+            sd[i].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].CMAGex, sd[i].CMAGraw, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
+            sd[i].VMAGex= sd[i].VMAGinst  - *Extinction[sd[sdi].filter] * sd[i].AMASS; //      Mobs - K * Airmass
+            sd[i].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].VMAGex, sd[i].VMAGinst, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
+         } else {
+            sd[i].CMAGex= sd[i].CMAGraw;
+            sd[i].VMAGex= sd[i].VMAGinst;
+         }
+         // corrections done
+         sd[i].CMAG= sd[i].CMAGex;
+         sd[i].CERR= 0; // same error as vmag, fully correlated
+         sd[i].narr+= st.sprintf("\r\n%cc= %0.3f +/- %0.3f (assume correlated with v error)", tolower(FILTname[sd[i].filter]), sd[i].CMAG, sd[i].CERR);
+         sd[i].VMAG= sd[i].VMAGex;
+         sd[i].narr+= st.sprintf("\r\n%cs= %0.3f +/- %0.3f", tolower(FILTname[sd[i].filter]), sd[i].VMAG, sd[i].VERR);
+      }
+   }
+
+
 
    // process
    do {
@@ -2276,4 +2299,52 @@ void __fastcall TForm1::CheckBox4Click(TObject *Sender)
 //---------------------------------------------------------------------------
 
 
+
+void __fastcall TForm1::Button5Click(TObject *Sender)
+{
+  FILE *stream;
+  char Line[512];
+  AnsiString s;
+
+  OpenDialog1->Options.Clear();
+  OpenDialog1->Options << ofAllowMultiSelect << ofFileMustExist;
+  OpenDialog1->Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+  OpenDialog1->FilterIndex = 1; // start the dialog showing all files
+  if (OpenDialog1->Execute())
+  {
+    for (int I = 0; I < OpenDialog1->Files->Count; I ++)
+    {
+      stream = fopen(OpenDialog1->Files->Strings[I].c_str(), "r");
+
+      if (stream)
+      {
+        // read the first line from the file
+        fgets(Line, sizeof(Line), stream);
+        /* if first line is "#TYPE=EXTENDED", scan
+            if first char is not #, capture
+
+        */
+        Memo4->Lines->Append(Line);
+        /*
+        if(Line) { // ie, not null
+           if(Line=="#TYPE=EXTENDED") {
+              do {
+                 fgets(Line, sizeof(Line), stream);
+                 if(Line) {
+
+                 }
+
+
+           }
+
+
+        }
+        */
+        fclose(stream);
+      }
+    }
+  }
+
+}
+//---------------------------------------------------------------------------
 
