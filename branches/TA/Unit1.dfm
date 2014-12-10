@@ -143,6 +143,7 @@ object Form1: TForm1
         Caption = 'include raw'
         Enabled = False
         TabOrder = 8
+        Visible = False
       end
       object Button4: TButton
         Left = 208
@@ -180,6 +181,17 @@ object Form1: TForm1
         Hint = 'Aggregate all common obs'
         Caption = 'Aggregate'
         TabOrder = 12
+      end
+      object TestTCCB: TCheckBox
+        Left = 8
+        Top = 336
+        Width = 129
+        Height = 17
+        Hint = 
+          'Run transforms on K stars to see if you get back to the std valu' +
+          'es.'
+        Caption = 'Test TC'
+        TabOrder = 13
       end
     end
     object Coefficients: TTabSheet
@@ -1137,16 +1149,20 @@ object Form1: TForm1
             'you have used the chart labels,'
           
             'that might work too. The problem is that there are often duplica' +
-            'te labels on a chart. TA will'
+            'te labels on a chart. TA will '
+          'try'
           
-            'try to identify the labels and warn you if there is a duplicates' +
-            ' problem. Worse comes to worse,'
+            'to identify the labels and warn you if there is a duplicates pro' +
+            'blem. Worse comes to worse, you '
+          'can'
           
-            'you can insert the comp stars magnitude into the observation fil' +
-            'e by adding a comment line'
+            'insert the comp stars magnitude into the observation file by add' +
+            'ing a comment line before the '
+          'first'
           
-            'before the first line that that refers to that comp that looks l' +
-            'ike: "#CREFMAG= <mag> <err>"'
+            'line that that refers to that comp that looks like: "#CREFMAG= <' +
+            'Cmag> <Cerr> <Kmag> <Kerr>".'
+          'Note that you must include the Comp star and Check star data.'
           ''
           '- Transform coefficients: a notation note'
           'Txy is a coefficient (called color or secondary) of the form:'
@@ -1242,8 +1258,14 @@ object Form1: TForm1
           'mountains:  B: 0.263, V: 0.137, R: 0.099, I: 0.053'
           ''
           
-            '- Aggregating your data. TA does not to this; see the Boxter pro' +
-            'gram for that service.'
+            '- Aggregating your data. TA will aggregate your data for you if ' +
+            'you check the box. This is'
+          
+            'a simple aggregation with the Verr taken as the standard deviati' +
+            'on of the mean. If you are'
+          
+            'looking for a more sophisticated aggregation, you should use the' +
+            ' Boxter program'
           ''
           
             '- Grouping. You should assign your observations into transform g' +
@@ -1262,6 +1284,25 @@ object Form1: TForm1
             'ith VSP where the chartid is'
           'not uniquely defining the chart.'
           ''
+          
+            '- Test TC checkbox. This is an experimental facility. How good a' +
+            're your transforms? In'
+          
+            'theory you should be able to observe a known star and be able to' +
+            ' reproduce its standardized'
+          
+            'magnitude. This test will move your K star data into the V posit' +
+            'ion and then when you'
+          
+            'process it will transform that observation. The Report tab will ' +
+            'then compare your results'
+          
+            'with the K stars standard magnitude. If your results don'#39't match' +
+            ' within your error or if'
+          
+            'there is a systematic deviation, you should check your observati' +
+            'on and assumptions'
+          'because your system is not able to match standard data.'
           ''
           
             '- If you have problems or issues or questions with or about the ' +
@@ -1275,7 +1316,7 @@ object Form1: TForm1
           ''
           ''
           ''
-          ' ')
+          '')
         ParentFont = False
         ReadOnly = True
         ScrollBars = ssVertical

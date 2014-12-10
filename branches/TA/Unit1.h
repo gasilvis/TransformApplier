@@ -141,6 +141,7 @@ __published:	// IDE-managed Components
    TCheckBox *CheckBox7;
    TCheckBox *CheckBox8;
    TButton *Button5;
+   TCheckBox *TestTCCB;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);

@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.22
+#define Version  2.23
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -383,7 +383,7 @@ typedef struct StarData { // eg
    float       CMAG;    // final
    float       CERR;
    AnsiString  KNAME; // 000-BBV-175
-   float       KMAG;  // 18.627
+   float       KMAGraw;  // 18.627
    float       AMASS; // 1.2606
    bool        AMASSna;
    AnsiString  GROUPs; // 0
@@ -394,6 +394,8 @@ typedef struct StarData { // eg
    char        filter;// index into filter list
    float       CREFmag; // ref mag of the comparison star
    float       CREFerr;
+   float       KREFmag;
+   float       KREFerr;
    unsigned short FILTC; // filter combo the star is mixed with
    AnsiString  StarsUsed;
    AnsiString  ErrorMsg;   // collect comments here to be displayed after the obs is printed
@@ -421,8 +423,8 @@ typedef struct  {
 #define chartMAX   1000
 chartrow chart[chartMAX];
 int chartnext= 0;
-int __fastcall checkChart(StarData* sd);
-int __fastcall getCREFMAG(StarData* sd);
+int __fastcall checkChart(StarData* sd, bool getc);
+int __fastcall getREFMAG(StarData* sd, bool getc);
 
 
 
@@ -719,7 +721,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 {
    char delim= ';';
    unsigned short fc; // filter combo and index
-   float crefmag= -999, x, creferr;
+   float crefmag= -999, x, creferr, krefmag, kreferr;
    int i, j, k, l, m, sdi, sdii, n, gdi= 0;
    AnsiString s, r, sx, st;
    StarData sdt;
@@ -774,9 +776,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             }
          } else
          if(s.SubString(2, 8)== "CREFMAG=") {
-            if(2 != sscanf(s.SubString(10, s.Length()-9).c_str(),"%f %f",  &crefmag, &creferr)) {
+            if(4 != sscanf(s.SubString(10, s.Length()-9).c_str(),"%f %f %f %f",  &crefmag, &creferr, &krefmag, &kreferr)) {
                 crefmag=  -999;
-                ShowMessage("Bad #CREFMAG comment; must have value AND error term.["+s.SubString(10, s.Length()-9)+"]"  );
+                ShowMessage("Bad #CREFMAG comment; must have value AND error term for both C and K .["+s.SubString(10, s.Length()-9)+"]"  );
             //crefmag= s.SubString(10, 20).ToDouble();
 //               ShowMessage(" missed CREFMAG");     EConvertError
             } // else   the crefmag/err will be picked up by the next star record
@@ -797,6 +799,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          sd[sdi].ErrorMsg= ""; // clear the msg
          sd[sdi].ensemble= false;
          sd[sdi].CREFmag= -999;
+         sd[sdi].KREFmag= -999;
 
          k= 1;
          j= s.Pos(delim);
@@ -890,7 +893,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          j= s.SubString(k, 20).Pos(delim);
          if(sd[sdi].KNAME!="na")
-            sd[sdi].KMAG= s.SubString(k, j- 1).ToDouble();        // will be NO if no check star
+            sd[sdi].KMAGraw= s.SubString(k, j- 1).ToDouble();        // will be NO if no check star
          k+= j;
 
          j= s.SubString(k, 20).Pos(delim);
@@ -919,10 +922,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          sd[sdi].NOTES= s.SubString(k, 100);
 
 
-         // get CREFMAG info
+         // get REFMAG info
          if(crefmag != -999) { // found in a prior comment
             sd[sdi].CREFmag= crefmag;
             sd[sdi].CREFerr= creferr;
+            sd[sdi].KREFmag= krefmag;
+            sd[sdi].KREFerr= kreferr;
             crefmag= -999; // don't use again.
          } else {
             for(int i= 0; i< sdi; i++) { // look in prior star records
@@ -934,9 +939,25 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   }
                }
             }
+            for(int i= 0; i< sdi; i++) { // look in prior star records
+               if(sd[sdi].KNAME==sd[i].KNAME) { // same star
+                  if(sd[sdi].filter==sd[i].filter && !sd[i].processed) { // same filter and not rejected
+                     sd[sdi].KREFmag= sd[i].KREFmag;
+                     sd[sdi].KREFerr= sd[i].KREFerr;
+                     break;
+                  }
+               }
+            }
             if(-999==sd[sdi].CREFmag) { // try internet
-               if(!getCREFMAG(&sd[sdi])) {
+               if(!getREFMAG(&sd[sdi], true)) {
                   sd[sdi].ErrorMsg+= " No CREFMAG available. Possibly bad chart reference";
+                  sd[sdi].processed= true; // skip record
+                  //break;  // full break here
+               }
+            }
+            if(-999==sd[sdi].KREFmag) { // try internet
+               if(!getREFMAG(&sd[sdi], false)) {
+                  sd[sdi].ErrorMsg+= " No KREFMAG available. Possibly bad chart reference";
                   sd[sdi].processed= true; // skip record
                   //break;  // full break here
                }
@@ -979,9 +1000,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                    sdt.VMAGraw+= sd[j].VMAGraw- sd[i].VMAGraw;
                    sdt.VERR+= (sd[j].VMAGraw- sd[i].VMAGraw) * (sd[j].VMAGraw- sd[i].VMAGraw);
                    sdt.CMAGraw+= sd[j].CMAGraw;
-                   sdt.KMAG+= sd[j].KMAG;
+                   sdt.KMAGraw+= sd[j].KMAGraw;
                    sdt.AMASS+= sd[j].AMASS;
-                   sdt.NOTES+= sd[j].NOTES;
+                   if(sd[j].NOTES!="na") sdt.NOTES+= sd[j].NOTES; // don't do nanana!
                    // kill j record, falling through as comment
                    sd[j].record= "# aggregated "+ sd[j].record;
                    sd[j].processed= true;
@@ -997,8 +1018,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                sdt.VERR= (x>=0)? sqrt(x/n): 0;
                sdt.VMAGraw/= n; sdt.VMAGraw+= sd[i].VMAGraw; // put offset back in
                sdt.CMAGraw/= n;
-               sdt.KMAG/= n;
+               sdt.KMAGraw/= n;
                sdt.AMASS/= n;
+               sdt.NOTES+= s.sprintf("  %i records aggregated", n);
                // rewrite .record   todo
                s= sdt.NAME+ delim;
                sdt.DATEs= FormatFloat("#.00000", sdt.DATE);
@@ -1016,7 +1038,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                s+= FormatFloat("0.000", sdt.CMAGraw)+ delim;
                s+= sdt.KNAME+ delim;
                if(sdt.KNAME=="na") s+="na" , s+= delim;
-               else s+= FormatFloat("0.000", sdt.KMAG)+ delim;
+               else s+= FormatFloat("0.000", sdt.KMAGraw)+ delim;
                if(sdt.AMASSna) s+= "na"+ delim;
                else   s+= FormatFloat("0.0000", sdt.AMASS)+ delim;
                s+= sdt.GROUPs+ delim;
@@ -1029,6 +1051,17 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          }
       } // end aggregate loop
    } // if aggregate data
+
+
+   // Test the TC's by putting the K star into V's place...
+   if(TestTCCB->Checked) {
+      for(i= 0; i< sdi; i++) {
+         if(sd[i].processed==false) {
+            sd[i].NAME= sd[i].KNAME;
+            sd[i].VMAGraw= sd[i].KMAGraw - sd[i].CMAGraw + sd[i].CREFmag;
+         }
+      }
+   }
 
    // prep phase
    for(i= 0; i< sdi; i++) {
@@ -1282,7 +1315,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
             s+= sd[j].KNAME+ delim;
             if(sd[j].KNAME=="na") s+="na" , s+= delim;
-            else s+= FormatFloat("0.000", sd[j].KMAG)+ delim;
+            else s+= FormatFloat("0.000", sd[j].KMAGraw)+ delim;
 
             if(sd[j].AMASSna) s+= "na"+ delim;
             else   s+= FormatFloat("0.0000", sd[j].AMASS)+ delim;
@@ -1329,6 +1362,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
    // extinction report
 
+
    // group report
    Memo4->Lines->Add("\r\n          Summary of group data");
    Memo4->Lines->Add("\n name+group      filtC   Bs     Vs     Rs     Is     bs     vs     rs     is     Bc     Vc     Rc     Ic     bc     vc     rc     ic");
@@ -1356,6 +1390,16 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                         Memo4->Lines->Add(st.sprintf("%s= %0.4f, +/- %0.4f", EC[i].name, *EC[i].value, *EC[i].error));
                }
 
+    // TC Test report
+    if(TestTCCB->Checked) {
+       Memo4->Lines->Add("\r\n    Transform Coefficient Test Report  \r\n");
+       Memo4->Lines->Add("name      filter   VMAGt   Refmag     diff    error");
+       for(i= 0; i<sdi; i++) {
+          if(sd[i].record[1]!='#') { // not aggregated
+             Memo4->Lines->Add(st.sprintf("%11s %3s %8.3f %8.3f %8.3f %8.3f", sd[i].NAME, sd[i].FILT, sd[i].VMAGt, sd[i].KREFmag, sd[i].VMAGt - sd[i].KREFmag, sd[i].VERRt));
+          }
+       }
+    }
 
 }
 //---------------------------------------------------------------------------
@@ -1519,7 +1563,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
-            vs = fTxy(b, v, Tbv, rTbv, 2);
+            Vs = fTxy(b, v, Tbv, rTbv, 2);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BV classic and alternative using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
@@ -1527,7 +1571,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
-            rvs = fTxy(b, v, Tbv, rTbv, 12);
+            rVs = fTxy(b, v, Tbv, rTbv, 12);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1988,30 +2032,43 @@ void __fastcall TForm1::Exit1Click(TObject *Sender)
 
 
 //int __fastcall TForm1::checkChart(TObject *Sender, StarData* sd) {
-int __fastcall checkChart(StarData* sd) {
+int __fastcall checkChart(StarData* sd, bool getc) {
     bool   auid= false, chartExists= false;
     int  ret= 1, i, labelCnt= 0, labelIndex= 0;
+    AnsiString NAME= getc? sd->CNAME: sd->KNAME;
     // CNAME an AUID?
-    if(sd->CNAME.Length()==11 && sd->CNAME[4]=='-' && sd->CNAME[8]=='-')
+    if(NAME.Length()==11 && NAME[4]=='-' && NAME[8]=='-')
        auid= true;
     // look for it in the current chart data
     for(i= 0; i< min(chartnext, chartMAX); i++) {
        if(chart[i].chartid == sd->CHART) { // same chart
           chartExists= true;
           if(auid) {
-             if(chart[i].AUID == sd->CNAME) break;
+             if(chart[i].AUID == NAME) break;
           } else { // maybe its a label
-             if(chart[i].label== sd->CNAME) labelCnt++, labelIndex= i;
+             if(chart[i].label== NAME) labelCnt++, labelIndex= i;
           }
        }
     }
     // did we find it?
     if(i != min(chartnext, chartMAX)) { // yes
-       sd->CREFmag= chart[i].sdata[sd->filter].mag;
-       sd->CREFerr= chart[i].sdata[sd->filter].err;
+       if(getc) {
+          sd->CREFmag= chart[i].sdata[sd->filter].mag;
+          sd->CREFerr= chart[i].sdata[sd->filter].err;
+       } else {
+          sd->KREFmag= chart[i].sdata[sd->filter].mag;
+          sd->KREFerr= chart[i].sdata[sd->filter].err;
+       }
     } else if(labelCnt == 1) { // found unique label
-       sd->CREFmag= chart[labelIndex].sdata[sd->filter].mag;
-       sd->CREFerr= chart[labelIndex].sdata[sd->filter].err;
+       if(getc) {
+          sd->CREFmag= chart[labelIndex].sdata[sd->filter].mag;
+          sd->CREFerr= chart[labelIndex].sdata[sd->filter].err;
+          sd->CNAME= chart[labelIndex].AUID; // replace label with AUID
+       } else {
+          sd->KREFmag= chart[labelIndex].sdata[sd->filter].mag;
+          sd->KREFerr= chart[labelIndex].sdata[sd->filter].err;
+          sd->KNAME= chart[labelIndex].AUID; // replace label with AUID
+       }
     } else if(labelCnt > 1) {
        sd->ErrorMsg+= " Duplicate label in chart.";
        ret= -1;
@@ -2028,14 +2085,14 @@ void __fastcall TForm1::Button2Click(TObject *Sender)
    sd.CNAME= "000-BCN-754";
    sd.CHART= "13300NXP"; //"13311ABQ"; //"13300NXP";
    sd.filter= 2;
-   getCREFMAG(&sd);
+   getREFMAG(&sd, true);
 
    s.printf("%f %f", sd.CREFmag, sd.CREFerr);
    Memo4->Lines->Add(s );
    Memo4->Lines->Add(sd.ErrorMsg);
 
    sd.filter= 3;
-   getCREFMAG(&sd);
+   getREFMAG(&sd, true);
 
    s.printf("%f %f", sd.CREFmag, sd.CREFerr);
    Memo4->Lines->Add(s );
@@ -2046,7 +2103,7 @@ void __fastcall TForm1::Button2Click(TObject *Sender)
 //---------------------------------------------------------------------------
 #define cpBufSize 10000
 //int __fastcall TForm1::getCREFMAG(TObject *Sender, StarData* sd)
-int __fastcall getCREFMAG(StarData* sd)
+int __fastcall getREFMAG(StarData* sd, bool getc)
 {
     int     I, ret;
     TStream *DataIn;
@@ -2056,7 +2113,7 @@ int __fastcall getCREFMAG(StarData* sd)
     char cp[cpBufSize];
     AnsiString as;
 
-    ret= checkChart(sd);
+    ret= checkChart(sd, getc);
     if(ret==1 || ret==-1) { // found or not in chart
        return (ret==1)? 1: 0;
     } else { // no. let's get more chart data
@@ -2106,7 +2163,7 @@ int __fastcall getCREFMAG(StarData* sd)
              }
           }
           // so, let's tryagain
-          return (checkChart(sd)== 1)? 1: 0;
+          return (checkChart(sd, getc)== 1)? 1: 0;
        } else {
           sd->ErrorMsg+= " No chartid.";
           return 0;
