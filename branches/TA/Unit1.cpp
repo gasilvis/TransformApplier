@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.23
+#define Version  2.24
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -1944,12 +1944,28 @@ AnsiString UnTransformedFile= "";
 
 void __fastcall TForm1::Open1Click(TObject *Sender)
 {
-   OpenDialog1->Title= "Open a un-transformed observation file";
-   OpenDialog1->Filter = "any txt file (*.*)|*.*";
+  FILE *stream;
+  char Line[512];
+  AnsiString s;
+
+   OpenDialog1->Title= "Add a un-transformed observation file(s)";
+   //OpenDialog1->Filter = "any txt file (*.*)|*.*";
+   OpenDialog1->Options << ofAllowMultiSelect << ofFileMustExist;
+   OpenDialog1->Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+   OpenDialog1->FilterIndex = 0; // start the dialog showing all files
    if(OpenDialog1->Execute()){
       // put into the Input window
       UnTransformedFile= OpenDialog1->FileName;
-      Memo1->Lines->LoadFromFile(UnTransformedFile);
+      //Memo1->Lines->LoadFromFile(UnTransformedFile);
+      for (int I = 0; I < OpenDialog1->Files->Count; I ++) {
+         // Memo1->Lines->LoadFromFile(OpenDialog1->Files->Strings[I]); clears
+         stream = fopen(OpenDialog1->Files->Strings[I].c_str(), "r");
+         if(stream) {
+           while(fgets(Line, sizeof(Line), stream))
+              Memo1->Lines->Append(Line);
+           fclose(stream);
+         }
+      }   
    };
    // Save the directory
    TIniFile *ini;

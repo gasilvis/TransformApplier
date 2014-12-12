@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 165
-  Top = 166
+  Left = 299
+  Top = 147
   Width = 1141
   Height = 783
   HorzScrollBar.Visible = False
@@ -86,9 +86,9 @@ object Form1: TForm1
         OnClick = ProcessButtonClick
       end
       object ToClipboardButton: TButton
-        Left = 24
+        Left = 8
         Top = 496
-        Width = 105
+        Width = 137
         Height = 25
         Hint = 'copy the transformed observations to the clipboard'
         Caption = 'To Clipboard'
@@ -164,9 +164,9 @@ object Form1: TForm1
         OnClick = Save1Click
       end
       object UseStdField: TCheckBox
-        Left = 16
+        Left = 8
         Top = 632
-        Width = 129
+        Width = 145
         Height = 17
         Hint = 'Chart uses Standard Field photometry'
         Caption = 'UseStdField'
@@ -192,6 +192,44 @@ object Form1: TForm1
           'es.'
         Caption = 'Test TC'
         TabOrder = 13
+      end
+    end
+    object Report: TTabSheet
+      Caption = 'Report'
+      ImageIndex = 1
+      object Memo4: TMemo
+        Left = 32
+        Top = 24
+        Width = 1065
+        Height = 641
+        Font.Charset = ANSI_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -17
+        Font.Name = 'Courier New'
+        Font.Style = []
+        ParentFont = False
+        ScrollBars = ssBoth
+        TabOrder = 0
+        WordWrap = False
+      end
+      object Button2: TButton
+        Left = 816
+        Top = 0
+        Width = 75
+        Height = 25
+        Caption = 'Button2'
+        TabOrder = 1
+        Visible = False
+        OnClick = Button2Click
+      end
+      object Button3: TButton
+        Left = 48
+        Top = 0
+        Width = 75
+        Height = 25
+        Caption = 'Clear'
+        TabOrder = 2
+        OnClick = Button3Click
       end
     end
     object Coefficients: TTabSheet
@@ -832,44 +870,6 @@ object Form1: TForm1
         OnClick = saveasINIfileClick
       end
     end
-    object Report: TTabSheet
-      Caption = 'Report'
-      ImageIndex = 2
-      object Memo4: TMemo
-        Left = 32
-        Top = 24
-        Width = 1065
-        Height = 641
-        Font.Charset = ANSI_CHARSET
-        Font.Color = clWindowText
-        Font.Height = -17
-        Font.Name = 'Courier New'
-        Font.Style = []
-        ParentFont = False
-        ScrollBars = ssBoth
-        TabOrder = 0
-        WordWrap = False
-      end
-      object Button2: TButton
-        Left = 816
-        Top = 0
-        Width = 75
-        Height = 25
-        Caption = 'Button2'
-        TabOrder = 1
-        Visible = False
-        OnClick = Button2Click
-      end
-      object Button3: TButton
-        Left = 48
-        Top = 0
-        Width = 75
-        Height = 25
-        Caption = 'Clear'
-        TabOrder = 2
-        OnClick = Button3Click
-      end
-    end
     object TabSheet3: TTabSheet
       Caption = 'Extinction'
       ImageIndex = 4
@@ -1070,10 +1070,11 @@ object Form1: TForm1
       object Button5: TButton
         Left = 544
         Top = 72
-        Width = 75
+        Width = 89
         Height = 25
         Caption = 'Button5'
         TabOrder = 1
+        Visible = False
         OnClick = Button5Click
       end
     end
@@ -1150,19 +1151,19 @@ object Form1: TForm1
           
             'that might work too. The problem is that there are often duplica' +
             'te labels on a chart. TA will '
-          'try'
           
-            'to identify the labels and warn you if there is a duplicates pro' +
-            'blem. Worse comes to worse, you '
-          'can'
+            'try to identify the labels and warn you if there is a duplicates' +
+            ' problem. Worse comes to worse,'
           
-            'insert the comp stars magnitude into the observation file by add' +
-            'ing a comment line before the '
-          'first'
+            'you can insert the comp stars magnitude into the observation fil' +
+            'e by adding a comment line'
           
-            'line that that refers to that comp that looks like: "#CREFMAG= <' +
-            'Cmag> <Cerr> <Kmag> <Kerr>".'
-          'Note that you must include the Comp star and Check star data.'
+            'before the first line that that refers to that comp that looks l' +
+            'ike:'
+          
+            '"#CREFMAG= <Cmag> <Cerr> <Kmag> <Kerr>". Note that you must incl' +
+            'ude the Comp star and Check'
+          'star data.'
           ''
           '- Transform coefficients: a notation note'
           'Txy is a coefficient (called color or secondary) of the form:'
@@ -1221,7 +1222,12 @@ object Form1: TForm1
           'needed. This reduces the value of the result.'
           ''
           
-            '- coefficient error values. Yes, you should submit the errors re' +
+            '- There are checkboxes in front of the coefficients; ignore them' +
+            '. Coefficients are selected as'
+          'described above.'
+          ''
+          
+            '- Coefficient error values. Yes, you should submit the errors re' +
             'lated to your coefficients. The'
           
             'TA will propagate them into the final error of the observation. ' +
@@ -1232,10 +1238,11 @@ object Form1: TForm1
           
             '(b_v,Bref_Vref,1,1),2,1) that is, the se,  standard error, of th' +
             'e slope estimate.'
+          'PTGP provides this error value for you.'
           ''
           
-            '- TA stores your constants in a the transformer.ini file alongsi' +
-            'de the Transformer.exe file. If'
+            '- TA stores your constants in the transformer.ini file alongside' +
+            ' the Transformer.exe file. If'
           
             'you have more than one set of coefficients, corresponding to a d' +
             'ifferent observing platform, you'
@@ -1331,6 +1338,7 @@ object Form1: TForm1
     Height = 25
     Caption = 'Button1'
     TabOrder = 1
+    Visible = False
     OnClick = Button1Click
   end
   object MainMenu1: TMainMenu
@@ -1370,8 +1378,8 @@ object Form1: TForm1
     DesignFormHeight = 783
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 725
-    DesignFormLeft = 165
-    DesignFormTop = 166
+    DesignFormLeft = 299
+    DesignFormTop = 147
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18
