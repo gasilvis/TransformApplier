@@ -142,6 +142,13 @@ __published:	// IDE-managed Components
    TCheckBox *CheckBox8;
    TButton *Button5;
    TCheckBox *TestTCCB;
+   TCheckBox *CheckBox12;
+   TEdit *Tu_ubEdit;
+   TEdit *rTu_ubEdit;
+   TCheckBox *CheckBox13;
+   TEdit *TubEdit;
+   TEdit *rTubEdit;
+   TButton *CopyReportButton;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -164,6 +171,7 @@ __published:	// IDE-managed Components
    void __fastcall CheckBox4Click(TObject *Sender);
    void __fastcall SaveReporttofile1Click(TObject *Sender);
    void __fastcall Button5Click(TObject *Sender);
+   void __fastcall CopyReportButtonClick(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations

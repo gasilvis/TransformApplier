@@ -1,8 +1,8 @@
 object Form1: TForm1
-  Left = 299
-  Top = 147
+  Left = 177
+  Top = 12
   Width = 1141
-  Height = 783
+  Height = 839
   HorzScrollBar.Visible = False
   VertScrollBar.Visible = False
   Caption = 'TA, the AAVSO Transform Applier application'
@@ -23,7 +23,7 @@ object Form1: TForm1
     Left = 0
     Top = 0
     Width = 1133
-    Height = 725
+    Height = 781
     ActivePage = TabSheet1
     Align = alClient
     TabOrder = 0
@@ -49,7 +49,7 @@ object Form1: TForm1
         Left = 152
         Top = 368
         Width = 953
-        Height = 305
+        Height = 361
         Font.Charset = ANSI_CHARSET
         Font.Color = clWindowText
         Font.Height = -13
@@ -165,7 +165,7 @@ object Form1: TForm1
       end
       object UseStdField: TCheckBox
         Left = 8
-        Top = 632
+        Top = 680
         Width = 145
         Height = 17
         Hint = 'Chart uses Standard Field photometry'
@@ -201,7 +201,7 @@ object Form1: TForm1
         Left = 32
         Top = 24
         Width = 1065
-        Height = 641
+        Height = 705
         Font.Charset = ANSI_CHARSET
         Font.Color = clWindowText
         Font.Height = -17
@@ -231,6 +231,16 @@ object Form1: TForm1
         TabOrder = 2
         OnClick = Button3Click
       end
+      object CopyReportButton: TButton
+        Left = 152
+        Top = 0
+        Width = 137
+        Height = 25
+        Hint = 'copy the transformed observations to the clipboard'
+        Caption = 'To Clipboard'
+        TabOrder = 3
+        OnClick = CopyReportButtonClick
+      end
     end
     object Coefficients: TTabSheet
       Caption = 'Coefficients'
@@ -247,7 +257,7 @@ object Form1: TForm1
         Left = 24
         Top = 32
         Width = 1073
-        Height = 649
+        Height = 705
         TabOrder = 0
         object Label19: TLabel
           Left = 712
@@ -265,7 +275,7 @@ object Form1: TForm1
         end
         object Label2: TCheckBox
           Left = 24
-          Top = 142
+          Top = 174
           Width = 473
           Height = 20
           Hint = 'reciprocal of slope of (v-r) versus (V-R)'
@@ -281,7 +291,7 @@ object Form1: TForm1
         end
         object Label3: TCheckBox
           Left = 24
-          Top = 206
+          Top = 238
           Width = 473
           Height = 20
           Hint = 'reciprocal of slope of (r-i) versus (R-I)'
@@ -297,9 +307,9 @@ object Form1: TForm1
         end
         object Label4: TCheckBox
           Left = 24
-          Top = 350
+          Top = 414
           Width = 473
-          Height = 20
+          Height = 21
           Hint = 'slope of (V-v) versus (V-R)'
           Caption = 'Tv_vr'
           Font.Charset = ANSI_CHARSET
@@ -313,9 +323,9 @@ object Form1: TForm1
         end
         object Label5: TCheckBox
           Left = 24
-          Top = 414
+          Top = 478
           Width = 473
-          Height = 20
+          Height = 21
           Hint = 'slope of (R-r) versus (R-I)'
           Caption = 'Tr_ri'
           Font.Charset = ANSI_CHARSET
@@ -329,9 +339,9 @@ object Form1: TForm1
         end
         object Label9: TCheckBox
           Left = 24
-          Top = 254
+          Top = 318
           Width = 465
-          Height = 20
+          Height = 21
           Hint = 'slope of (B-b) versus (B-V)'
           Caption = 'Tb_bv'
           Font.Charset = ANSI_CHARSET
@@ -345,7 +355,7 @@ object Form1: TForm1
         end
         object Label10: TCheckBox
           Left = 24
-          Top = 174
+          Top = 206
           Width = 473
           Height = 20
           Hint = 'reciprocal of slope of (v-i) versus (V-I)'
@@ -361,9 +371,9 @@ object Form1: TForm1
         end
         object Label8: TCheckBox
           Left = 24
-          Top = 382
+          Top = 446
           Width = 465
-          Height = 20
+          Height = 21
           Hint = 'slope of (V-v) versus (V-I)'
           Caption = 'Tv_vi'
           Font.Charset = ANSI_CHARSET
@@ -377,7 +387,7 @@ object Form1: TForm1
         end
         object Label12: TCheckBox
           Left = 24
-          Top = 110
+          Top = 142
           Width = 473
           Height = 20
           Hint = 'slope of (B-b) versus (B-V)'
@@ -393,9 +403,9 @@ object Form1: TForm1
         end
         object Label13: TCheckBox
           Left = 24
-          Top = 286
+          Top = 350
           Width = 473
-          Height = 20
+          Height = 21
           Hint = 'slope of (B-b) versus (B-V)'
           Caption = 'Tb_br'
           Font.Charset = ANSI_CHARSET
@@ -409,9 +419,9 @@ object Form1: TForm1
         end
         object Label14: TCheckBox
           Left = 24
-          Top = 318
+          Top = 382
           Width = 473
-          Height = 20
+          Height = 21
           Hint = 'slope of (B-b) versus (B-V)'
           Caption = 'Tb_bi'
           Font.Charset = ANSI_CHARSET
@@ -425,7 +435,7 @@ object Form1: TForm1
         end
         object Label11: TCheckBox
           Left = 24
-          Top = 78
+          Top = 110
           Width = 473
           Height = 20
           Hint = 'slope of (B-b) versus (B-V)'
@@ -441,7 +451,7 @@ object Form1: TForm1
         end
         object Label1: TCheckBox
           Left = 24
-          Top = 46
+          Top = 78
           Width = 457
           Height = 20
           Hint = 'slope of (B-b) versus (B-V)'
@@ -457,7 +467,7 @@ object Form1: TForm1
         end
         object TbvEdit: TEdit
           Left = 520
-          Top = 40
+          Top = 72
           Width = 121
           Height = 29
           TabOrder = 0
@@ -465,7 +475,7 @@ object Form1: TForm1
         end
         object TvrEdit: TEdit
           Left = 520
-          Top = 136
+          Top = 168
           Width = 121
           Height = 29
           TabOrder = 3
@@ -473,7 +483,7 @@ object Form1: TForm1
         end
         object TriEdit: TEdit
           Left = 520
-          Top = 200
+          Top = 232
           Width = 121
           Height = 29
           TabOrder = 5
@@ -481,31 +491,31 @@ object Form1: TForm1
         end
         object Tv_vrEdit: TEdit
           Left = 520
-          Top = 344
+          Top = 408
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 9
           OnExit = NumericOnExit
         end
         object Tr_riEdit: TEdit
           Left = 520
-          Top = 408
+          Top = 472
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 11
           OnExit = NumericOnExit
         end
         object Tb_bvEdit: TEdit
           Left = 520
-          Top = 248
+          Top = 312
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 6
           OnExit = NumericOnExit
         end
         object TviEdit: TEdit
           Left = 520
-          Top = 168
+          Top = 200
           Width = 121
           Height = 29
           TabOrder = 4
@@ -513,15 +523,15 @@ object Form1: TForm1
         end
         object Tv_viEdit: TEdit
           Left = 520
-          Top = 376
+          Top = 440
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 10
           OnExit = NumericOnExit
         end
         object TbrEdit: TEdit
           Left = 520
-          Top = 72
+          Top = 104
           Width = 121
           Height = 29
           TabOrder = 1
@@ -529,7 +539,7 @@ object Form1: TForm1
         end
         object TbiEdit: TEdit
           Left = 520
-          Top = 104
+          Top = 136
           Width = 121
           Height = 29
           TabOrder = 2
@@ -537,23 +547,23 @@ object Form1: TForm1
         end
         object Tb_brEdit: TEdit
           Left = 520
-          Top = 280
+          Top = 344
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 7
           OnExit = NumericOnExit
         end
         object Tb_biEdit: TEdit
           Left = 520
-          Top = 312
+          Top = 376
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 8
           OnExit = NumericOnExit
         end
         object rTr_riEdit: TEdit
           Left = 680
-          Top = 408
+          Top = 472
           Width = 121
           Height = 29
           TabOrder = 24
@@ -561,7 +571,7 @@ object Form1: TForm1
         end
         object rTv_viEdit: TEdit
           Left = 680
-          Top = 376
+          Top = 440
           Width = 121
           Height = 29
           TabOrder = 23
@@ -569,7 +579,7 @@ object Form1: TForm1
         end
         object rTv_vrEdit: TEdit
           Left = 680
-          Top = 344
+          Top = 408
           Width = 121
           Height = 29
           TabOrder = 22
@@ -577,7 +587,7 @@ object Form1: TForm1
         end
         object rTb_biEdit: TEdit
           Left = 680
-          Top = 312
+          Top = 376
           Width = 121
           Height = 29
           TabOrder = 21
@@ -585,7 +595,7 @@ object Form1: TForm1
         end
         object rTb_brEdit: TEdit
           Left = 680
-          Top = 280
+          Top = 344
           Width = 121
           Height = 29
           TabOrder = 20
@@ -593,7 +603,7 @@ object Form1: TForm1
         end
         object rTb_bvEdit: TEdit
           Left = 680
-          Top = 248
+          Top = 312
           Width = 121
           Height = 29
           TabOrder = 19
@@ -601,7 +611,7 @@ object Form1: TForm1
         end
         object rTriEdit: TEdit
           Left = 680
-          Top = 200
+          Top = 232
           Width = 121
           Height = 29
           TabOrder = 18
@@ -609,7 +619,7 @@ object Form1: TForm1
         end
         object rTviEdit: TEdit
           Left = 680
-          Top = 168
+          Top = 200
           Width = 121
           Height = 29
           TabOrder = 17
@@ -617,7 +627,7 @@ object Form1: TForm1
         end
         object rTvrEdit: TEdit
           Left = 680
-          Top = 136
+          Top = 168
           Width = 121
           Height = 29
           TabOrder = 16
@@ -625,7 +635,7 @@ object Form1: TForm1
         end
         object rTbiEdit: TEdit
           Left = 680
-          Top = 104
+          Top = 136
           Width = 121
           Height = 29
           TabOrder = 15
@@ -633,7 +643,7 @@ object Form1: TForm1
         end
         object rTbrEdit: TEdit
           Left = 680
-          Top = 72
+          Top = 104
           Width = 121
           Height = 29
           TabOrder = 14
@@ -641,7 +651,7 @@ object Form1: TForm1
         end
         object rTbvEdit: TEdit
           Left = 680
-          Top = 40
+          Top = 72
           Width = 121
           Height = 29
           TabOrder = 13
@@ -649,9 +659,9 @@ object Form1: TForm1
         end
         object CheckBox1: TCheckBox
           Left = 24
-          Top = 446
+          Top = 510
           Width = 465
-          Height = 20
+          Height = 21
           Hint = 'slope of (V-v) versus (V-R)'
           Caption = 'Tv_bv'
           Font.Charset = ANSI_CHARSET
@@ -665,9 +675,9 @@ object Form1: TForm1
         end
         object CheckBox2: TCheckBox
           Left = 24
-          Top = 478
+          Top = 542
           Width = 473
-          Height = 20
+          Height = 21
           Hint = 'slope of (V-v) versus (V-I)'
           Caption = 'Tr_bv'
           Font.Charset = ANSI_CHARSET
@@ -681,9 +691,9 @@ object Form1: TForm1
         end
         object CheckBox3: TCheckBox
           Left = 24
-          Top = 510
+          Top = 574
           Width = 473
-          Height = 20
+          Height = 21
           Hint = 'slope of (R-r) versus (R-I)'
           Caption = 'Ti_bv'
           Font.Charset = ANSI_CHARSET
@@ -697,15 +707,15 @@ object Form1: TForm1
         end
         object Tv_bvEdit: TEdit
           Left = 520
-          Top = 440
+          Top = 504
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 12
           OnExit = NumericOnExit
         end
         object rTv_bvEdit: TEdit
           Left = 680
-          Top = 440
+          Top = 504
           Width = 121
           Height = 29
           TabOrder = 40
@@ -713,7 +723,7 @@ object Form1: TForm1
         end
         object rTr_bvEdit: TEdit
           Left = 680
-          Top = 472
+          Top = 536
           Width = 121
           Height = 29
           TabOrder = 41
@@ -721,7 +731,7 @@ object Form1: TForm1
         end
         object rTi_bvEdit: TEdit
           Left = 680
-          Top = 504
+          Top = 568
           Width = 121
           Height = 29
           TabOrder = 42
@@ -729,25 +739,25 @@ object Form1: TForm1
         end
         object Ti_bvEdit: TEdit
           Left = 520
-          Top = 504
+          Top = 568
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 43
           OnExit = NumericOnExit
         end
         object Tr_bvEdit: TEdit
           Left = 520
-          Top = 472
+          Top = 536
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 44
           OnExit = NumericOnExit
         end
         object CheckBox9: TCheckBox
           Left = 24
-          Top = 542
+          Top = 606
           Width = 465
-          Height = 20
+          Height = 21
           Hint = 'slope of (V-v) versus (V-R)'
           Caption = 'Tr_vr'
           Font.Charset = ANSI_CHARSET
@@ -761,9 +771,9 @@ object Form1: TForm1
         end
         object CheckBox10: TCheckBox
           Left = 24
-          Top = 574
+          Top = 638
           Width = 473
-          Height = 20
+          Height = 21
           Hint = 'slope of (V-v) versus (V-I)'
           Caption = 'Tr_vi'
           Font.Charset = ANSI_CHARSET
@@ -777,9 +787,9 @@ object Form1: TForm1
         end
         object CheckBox11: TCheckBox
           Left = 24
-          Top = 606
+          Top = 670
           Width = 473
-          Height = 20
+          Height = 21
           Hint = 'slope of (R-r) versus (R-I)'
           Caption = 'Ti_vi'
           Font.Charset = ANSI_CHARSET
@@ -793,15 +803,15 @@ object Form1: TForm1
         end
         object Tr_vrEdit: TEdit
           Left = 520
-          Top = 536
+          Top = 600
           Width = 121
-          Height = 29
+          Height = 30
           TabOrder = 48
           OnExit = NumericOnExit
         end
         object rTr_vrEdit: TEdit
           Left = 680
-          Top = 536
+          Top = 600
           Width = 121
           Height = 29
           TabOrder = 49
@@ -809,7 +819,7 @@ object Form1: TForm1
         end
         object rTr_viEdit: TEdit
           Left = 680
-          Top = 568
+          Top = 632
           Width = 121
           Height = 29
           TabOrder = 50
@@ -817,7 +827,7 @@ object Form1: TForm1
         end
         object rTi_viEdit: TEdit
           Left = 680
-          Top = 600
+          Top = 664
           Width = 121
           Height = 29
           TabOrder = 51
@@ -825,7 +835,7 @@ object Form1: TForm1
         end
         object Ti_viEdit: TEdit
           Left = 520
-          Top = 600
+          Top = 664
           Width = 121
           Height = 29
           TabOrder = 52
@@ -833,10 +843,74 @@ object Form1: TForm1
         end
         object Tr_viEdit: TEdit
           Left = 520
-          Top = 568
+          Top = 632
           Width = 121
           Height = 29
           TabOrder = 53
+          OnExit = NumericOnExit
+        end
+        object CheckBox12: TCheckBox
+          Left = 24
+          Top = 286
+          Width = 465
+          Height = 21
+          Hint = 'slope of (B-b) versus (B-V)'
+          Caption = 'Tu_ub'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -20
+          Font.Name = 'Courier New'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 54
+          OnClick = CheckBox4Click
+        end
+        object Tu_ubEdit: TEdit
+          Left = 520
+          Top = 280
+          Width = 121
+          Height = 30
+          TabOrder = 55
+          OnExit = NumericOnExit
+        end
+        object rTu_ubEdit: TEdit
+          Left = 680
+          Top = 280
+          Width = 121
+          Height = 29
+          TabOrder = 56
+          OnExit = NumericOnExit
+        end
+        object CheckBox13: TCheckBox
+          Left = 24
+          Top = 46
+          Width = 473
+          Height = 20
+          Hint = 'reciprocal of slope of (r-i) versus (R-I)'
+          Caption = 'Tub'
+          Font.Charset = ANSI_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -20
+          Font.Name = 'Courier New'
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 57
+          OnClick = CheckBox4Click
+        end
+        object TubEdit: TEdit
+          Left = 520
+          Top = 40
+          Width = 121
+          Height = 29
+          TabOrder = 58
+          OnExit = NumericOnExit
+        end
+        object rTubEdit: TEdit
+          Left = 680
+          Top = 40
+          Width = 121
+          Height = 29
+          TabOrder = 59
           OnExit = NumericOnExit
         end
       end
@@ -900,7 +974,6 @@ object Form1: TForm1
           Width = 121
           Height = 29
           TabOrder = 0
-          Visible = False
           OnExit = NumericOnExit
         end
         object rEiEdit: TEdit
@@ -941,7 +1014,6 @@ object Form1: TForm1
           Width = 121
           Height = 29
           TabOrder = 5
-          Visible = False
           OnExit = NumericOnExit
         end
         object EiEdit: TEdit
@@ -1063,7 +1135,6 @@ object Form1: TForm1
           Font.Style = [fsBold]
           ParentFont = False
           TabOrder = 15
-          Visible = False
           OnClick = CheckBox4Click
         end
       end
@@ -1085,7 +1156,7 @@ object Form1: TForm1
         Left = 16
         Top = 8
         Width = 1097
-        Height = 665
+        Height = 721
         Font.Charset = ANSI_CHARSET
         Font.Color = clWindowText
         Font.Height = -18
@@ -1185,14 +1256,17 @@ object Form1: TForm1
           
             '- The AAVOS recommended transforms that the TA performs require ' +
             'the following coefficients:'
-          'for            B       V       R       I'
-          'BVRI          Tb_bv   Tv_bv   Tr_vi   Ti_vi'
-          'BVR           Tb_bv   Tv_bv   Tvr'
-          'BVI           Tb_bv   Tv_bv           Ti_vi'
-          'VRI                   Tv_vi   Tr_vi   Tvi'
-          'BV            Tb_bv   Tv_bv'
-          'VR                    Tv_vr   Tr_vr'
-          'VI                    Tv_vi           Tvi'
+          'for      U       B       V       R       I'
+          'UBVRI  Tu_ub   Tb_bv   Tv_bv   Tr_vi   Ti_vi'
+          'UBVI   Tu_ub   Tb_bv   Tv_bv           Ti_vi'
+          'UBV    Tu_ub   Tb_bv   Tv_bv'
+          'BVRI           Tb_bv   Tv_bv   Tr_vi   Ti_vi'
+          'BVR            Tb_bv   Tv_bv   Tvr'
+          'BVI            Tb_bv   Tv_bv           Ti_vi'
+          'VRI                    Tv_vi   Tr_vi   Tvi'
+          'BV             Tb_bv   Tv_bv'
+          'VR                     Tv_vr   Tr_vr'
+          'VI                     Tv_vi           Tvi'
           
             'To transform your data you need to group your observations. Abov' +
             'e is the list of groupings that'
@@ -1201,21 +1275,23 @@ object Form1: TForm1
             'e not loaded these into the'
           'coefficients page, you will get a complaint from TA.'
           '- The Alternate transform equation set uses:'
-          'BVRI         Tbv     Tv_bv   Tvr     Tri'
-          'BVR          Tb_bv   Tbv     Tvr'
-          'BVI          Tb_bv   Tbv             Tvi'
-          'VRI                  Tv_vr   Tvr     Tri'
-          'BV           Tb_bv   Tbv'
-          'VR                   Tv_vr   Tvr'
-          'VI                   Tv_vi           Tvi'
+          'for      U       B       V       R       I'
+          'BVRI    Tub    Tbv     Tv_bv   Tvr     Tri'
+          'BVR     Tub    Tb_bv   Tbv     Tvr'
+          'BVI     Tub    Tb_bv   Tbv             Tvi'
+          'VRI                    Tv_vr   Tvr     Tri'
+          'BV             Tb_bv   Tbv'
+          'VR                     Tv_vr   Tvr'
+          'VI                     Tv_vi           Tvi'
           '- The classic transform equations from the literature are:'
-          'BVRI         Tr_ri, Tri, Tv_vr, Tvr and Tbv   deprecated'
-          'BVR          Tbv     Tv_vr   Tvr'
-          'BVI          Tbv     Tv_vi           Tvi'
-          'VRI          Tr_ri, Tri, Tv_vr and Tvr        deprecated'
-          'BV           Tb_bv   Tbv'
-          'VR                   Tv_vr   Tvr'
-          'VI                   Tv_vi           Tvi'
+          'for      U       B       V       R       I'
+          'BVRI           Tr_ri, Tri, Tv_vr, Tvr and Tbv   deprecated'
+          'BVR            Tbv     Tv_vr   Tvr'
+          'BVI            Tbv     Tv_vi           Tvi'
+          'VRI            Tr_ri, Tri, Tv_vr and Tvr        deprecated'
+          'BV             Tb_bv   Tbv'
+          'VR                     Tv_vr   Tvr'
+          'VI                     Tv_vi           Tvi'
           
             'Classic BVRI and VRI are deprecated because they use too many co' +
             'efficients, one more than is'
@@ -1332,8 +1408,8 @@ object Form1: TForm1
     end
   end
   object Button1: TButton
-    Left = 1024
-    Top = 688
+    Left = 1016
+    Top = 640
     Width = 75
     Height = 25
     Caption = 'Button1'
@@ -1375,11 +1451,11 @@ object Form1: TForm1
     DesignScreenHeight = 908
     DesignPixelsPerInch = 120
     DesignFormWidth = 1141
-    DesignFormHeight = 783
+    DesignFormHeight = 839
     DesignFormClientWidth = 1133
-    DesignFormClientHeight = 725
-    DesignFormLeft = 299
-    DesignFormTop = 147
+    DesignFormClientHeight = 781
+    DesignFormLeft = 177
+    DesignFormTop = 12
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18
