@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.25
+#define Version  2.26
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -1044,6 +1044,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    } // end loop through input lines
    sdi++; // sdi is the number of obs collected
 
+   // assess extinction
+
    if(AggregateCB->Checked) {
       /*
       scan sd for common NAME, FILTER, CNAME, KNAME, not TRANS, MTYPE,
@@ -1168,7 +1170,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          if(applyExtinction->Checked) {
             sd[i].CMAGex= sd[i].CMAGraw - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
             sd[i].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].CMAGex, sd[i].CMAGraw, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
-            sd[i].VMAGex= sd[i].VMAGinst  - *Extinction[sd[sdi].filter] * sd[i].AMASS; //      Mobs - K * Airmass
+            sd[i].VMAGex= sd[i].VMAGinst  - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
             sd[i].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].VMAGex, sd[i].VMAGinst, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
          } else {
             sd[i].CMAGex= sd[i].CMAGraw;
@@ -1489,6 +1491,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
              Memo4->Lines->Add(st.sprintf("%11s %3s %8.3f %8.3f %8.3f %8.3f", sd[i].NAME, sd[i].FILT, sd[i].VMAGt, sd[i].KREFmag, sd[i].VMAGt - sd[i].KREFmag, sd[i].VERRt));
           }
        }
+       // try to derive coefficients?
+       //  need to extinct since they are from all over....
+
     }
 
 }
