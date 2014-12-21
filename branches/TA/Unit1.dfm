@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 177
-  Top = 12
+  Left = 192
+  Top = 155
   Width = 1141
   Height = 839
   HorzScrollBar.Visible = False
@@ -493,7 +493,7 @@ object Form1: TForm1
           Left = 520
           Top = 408
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 9
           OnExit = NumericOnExit
         end
@@ -501,7 +501,7 @@ object Form1: TForm1
           Left = 520
           Top = 472
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 11
           OnExit = NumericOnExit
         end
@@ -509,7 +509,7 @@ object Form1: TForm1
           Left = 520
           Top = 312
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 6
           OnExit = NumericOnExit
         end
@@ -525,7 +525,7 @@ object Form1: TForm1
           Left = 520
           Top = 440
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 10
           OnExit = NumericOnExit
         end
@@ -549,7 +549,7 @@ object Form1: TForm1
           Left = 520
           Top = 344
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 7
           OnExit = NumericOnExit
         end
@@ -557,7 +557,7 @@ object Form1: TForm1
           Left = 520
           Top = 376
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 8
           OnExit = NumericOnExit
         end
@@ -709,7 +709,7 @@ object Form1: TForm1
           Left = 520
           Top = 504
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 12
           OnExit = NumericOnExit
         end
@@ -741,7 +741,7 @@ object Form1: TForm1
           Left = 520
           Top = 568
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 43
           OnExit = NumericOnExit
         end
@@ -749,7 +749,7 @@ object Form1: TForm1
           Left = 520
           Top = 536
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 44
           OnExit = NumericOnExit
         end
@@ -805,7 +805,7 @@ object Form1: TForm1
           Left = 520
           Top = 600
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 48
           OnExit = NumericOnExit
         end
@@ -869,7 +869,7 @@ object Form1: TForm1
           Left = 520
           Top = 280
           Width = 121
-          Height = 30
+          Height = 29
           TabOrder = 55
           OnExit = NumericOnExit
         end
@@ -912,6 +912,14 @@ object Form1: TForm1
           Height = 29
           TabOrder = 59
           OnExit = NumericOnExit
+        end
+        object Panel1: TPanel
+          Left = 16
+          Top = 32
+          Width = 33
+          Height = 665
+          BevelOuter = bvNone
+          TabOrder = 60
         end
       end
       object setupEdit: TEdit
@@ -1053,6 +1061,9 @@ object Form1: TForm1
           Top = 32
           Width = 81
           Height = 17
+          Hint = 
+            'Extinction is turned off for this version of TA. Read the Help t' +
+            'ab.'
           Caption = 'apply'
           TabOrder = 10
           OnExit = applyExtinctionExit
@@ -1136,6 +1147,14 @@ object Form1: TForm1
           ParentFont = False
           TabOrder = 15
           OnClick = CheckBox4Click
+        end
+        object Panel2: TPanel
+          Left = 24
+          Top = 56
+          Width = 25
+          Height = 169
+          BevelOuter = bvNone
+          TabOrder = 16
         end
       end
       object Button5: TButton
@@ -1331,24 +1350,37 @@ object Form1: TForm1
           'that you accessed.'
           ''
           
-            '- Extinction. The TA is able to apply extinction to your observa' +
-            'tion. Simply provide the'
+            '- Extinction. Extinction is important, but this formulation of t' +
+            'he transform process cancels out'
           
-            'coefficients and their errors and check the box to apply. If you' +
-            ' don'#39't have extinction'
-          'coefficients for you site, you might try these averages:'
-          'sea-level:  B: 0.368, V: 0.214, R: 0.165, I: 0.130'
-          'mountains:  B: 0.263, V: 0.137, R: 0.099, I: 0.053'
+            'extinction because it assumes the target and comp star are at th' +
+            'e same airmass. So, extinction'
+          
+            'is kept turned off. Future versions of TA will be able to adjust' +
+            ' your data for extinction. This'
+          
+            'will depend on giving you a mechanism to specify the airmass of ' +
+            'the comp star where it is'
+          'different from the target.'
           ''
           
-            '- Aggregating your data. TA will aggregate your data for you if ' +
-            'you check the box. This is'
+            '- Aggregating your data. If you have multiple observations of a ' +
+            'variable star that is'
+          
+            'varying 100 times slower than the time span of your observations' +
+            ', then you should aggregate'
+          
+            'your data; it will give you better error values. If you are obse' +
+            'rving a fast variable then'
+          
+            'don'#39't aggregate. TA will aggregate your data for you if you chec' +
+            'k the box. This is'
           
             'a simple aggregation with the Verr taken as the standard deviati' +
             'on of the mean. If you are'
           
             'looking for a more sophisticated aggregation, you should use the' +
-            ' Boxter program'
+            ' Boxter program.'
           ''
           
             '- Grouping. You should assign your observations into transform g' +
@@ -1386,6 +1418,7 @@ object Form1: TForm1
             'there is a systematic deviation, you should check your observati' +
             'on and assumptions'
           'because your system is not able to match standard data.'
+          ''
           ''
           
             '- If you have problems or issues or questions with or about the ' +
@@ -1454,8 +1487,8 @@ object Form1: TForm1
     DesignFormHeight = 839
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 781
-    DesignFormLeft = 177
-    DesignFormTop = 12
+    DesignFormLeft = 192
+    DesignFormTop = 155
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18
