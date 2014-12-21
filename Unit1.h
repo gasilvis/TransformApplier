@@ -149,6 +149,8 @@ __published:	// IDE-managed Components
    TEdit *TubEdit;
    TEdit *rTubEdit;
    TButton *CopyReportButton;
+   TPanel *Panel1;
+   TPanel *Panel2;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);

@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.27
+#define Version  2.28
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -800,6 +800,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    AnsiString s, r, sx, st;
    StarData sdt;
 
+   // Extinction turned off
+   applyExtinction->Checked= false;
+   
    // init
    // reset flags for displaying information in the output. Only want to display
    // the transforms and the formulas once in the output
@@ -1171,6 +1174,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             sd[i].CMAGex= sd[i].CMAGraw - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
             sd[i].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].CMAGex, sd[i].CMAGraw, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
             sd[i].VMAGex= sd[i].VMAGinst  - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
+            //  todo  sd[i].VERR= 
             sd[i].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].VMAGex, sd[i].VMAGinst, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
          } else {
             sd[i].CMAGex= sd[i].CMAGraw;
@@ -1537,7 +1541,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Is = Rs - ((Rc - Ic) + Tri * ((rs - is) - (rc - ic)));
          Vs = vs + (Vc - vc) + Tv_vr * Tvr * ((vs - rs) - (vc - rc));
          Bs = Vs + (Bc - Vc) + Tbv * ((bs - vs) - (bc - vc));
-         d->StarsUsed= "# BVRI Classic using: B @ "+ sd[sf[FILT_Bi]].DATEs
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs
             + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          break;
 
@@ -1556,7 +1560,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
-         d->StarsUsed= "# BVRI AAVSO using: B @ "+ sd[sf[FILT_Bi]].DATEs
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
@@ -1589,7 +1593,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Is = Rs - (Rc-Ic) - Tri* ((rs-is)-(rc-ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
-         d->StarsUsed= "# BVRI special using: B @ "+ sd[sf[FILT_Bi]].DATEs
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
        error comp
          break;
@@ -1663,7 +1667,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTxy(b, v, Tbv, rTbv, 2);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
-         d->StarsUsed= "# BV classic and alternative using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
@@ -1992,7 +1996,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
-         d->StarsUsed= "# UBVRI AAVSO using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
@@ -2021,7 +2025,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Is-oIs)>0.0001 );
-         d->StarsUsed= "# UBVI AAVSO using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
@@ -2048,7 +2052,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001);
-         d->StarsUsed= "# UBV AAVSO using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs;
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
@@ -2076,7 +2080,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Is = fTxy( r, i, Tri, rTri, 2);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
-         d->StarsUsed= "# UBVRI alternate using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
@@ -2105,7 +2109,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Is = fTxy(v, i, Tvi, rTvi, 2); //Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Is-oIs)>0.0001 );
-         d->StarsUsed= "# UBVI alternate using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
@@ -2132,7 +2136,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTxy(b, v, Tbv, rTbv, 2);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001);
-         d->StarsUsed= "# UBV alternate using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs;
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
@@ -2523,15 +2527,17 @@ float fTxy (char x, char y, float Txy, float rTxy, int mode) {
      // Secondary or Color form:  Txy
      //  1/slope of (x-y) vs (X-Y) :
      //    Txy= ((Xs-Ys)-(Xc-Yc)) / ((xs-ys)-(xc-yc))
-     float Xs, xs, Xc, xc, Ys, ys, Yc, yc, r, s, rXs, rxs, rXc, rxc, rYs, rys, rYc, ryc;
+    float Xs, xs, Xc, xc, Ys, ys, Yc, yc, r, s, rXs, rxs, rXc, rxc, rYs, rys, rYc, ryc, a, ra2, b, rb2;
 
     switch(x) {
+       case 'u': Xs= Us; xs= us; Xc= Uc; xc= uc;  rXs= rUs; rxs= rus; rXc= rUc; rxc= ruc; break;
        case 'b': Xs= Bs; xs= bs; Xc= Bc; xc= bc;  rXs= rBs; rxs= rbs; rXc= rBc; rxc= rbc; break;
        case 'v': Xs= Vs; xs= vs; Xc= Vc; xc= vc;  rXs= rVs; rxs= rvs; rXc= rVc; rxc= rvc; break;
        case 'r': Xs= Rs; xs= rs; Xc= Rc; xc= rc;  rXs= rRs; rxs= rrs; rXc= rRc; rxc= rrc; break;
        case 'i': Xs= Is; xs= is; Xc= Ic; xc= ic;  rXs= rIs; rxs= ris; rXc= rIc; rxc= ric; break;
     }
     switch(y) {
+       case 'u': Ys= Us; ys= us; Yc= Uc; yc= uc;  rYs= rUs; rys= rus; rYc= rUc; ryc= ruc; break;
        case 'b': Ys= Bs; ys= bs; Yc= Bc; yc= bc;  rYs= rBs; rys= rbs; rYc= rBc; ryc= rbc; break;
        case 'v': Ys= Vs; ys= vs; Yc= Vc; yc= vc;  rYs= rVs; rys= rvs; rYc= rVc; ryc= rvc; break;
        case 'r': Ys= Rs; ys= rs; Yc= Rc; yc= rc;  rYs= rRs; rys= rrs; rYc= rRc; ryc= rrc; break;
@@ -2542,16 +2548,24 @@ float fTxy (char x, char y, float Txy, float rTxy, int mode) {
        case 1: r= Xs=  Ys + (Xc-Yc) +  Txy * ((xs-ys)-(xc-yc));   break;
        case 2: r= Ys=  Xs - (Xc-Yc) -  Txy * ((xs-ys)-(xc-yc));   break;
 
-       case 11: s= ((xs-ys)-(xc-yc));
-            r= rXs=  sqrt( (pow(rYs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
+       case 11: // Xs= a + Txy * b
+	        /*a= Ys + (Xc-Yc);*/ ra2= pow(rYs,2)+pow(rXc,2)+pow(rYc,2);
+			b= ((xs-ys)-(xc-yc)); rb2= pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2);
+			r= rXs= sqrt( ra2 + pow(Txy*b,2)*( pow(rTxy/Txy,2) + rb2/pow(b,2) ));
+            //s= b; r= rXs=  sqrt( (pow(rYs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
             break;
-       case 12: s= ((xs-ys)-(xc-yc));
-            r= rYs=  sqrt( (pow(rXs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
+       case 12: // Ys= a - Txy * b
+	        /*a= Xs - (Xc-Yc);*/ ra2= pow(rXs,2)+pow(rXc,2)+pow(rYc,2);
+			b= ((xs-ys)-(xc-yc)); rb2= pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2);
+			r= rYs= sqrt( ra2 + pow(Txy*b,2)*( pow(rTxy/Txy,2) + rb2/pow(b,2) ));
+            // orig s= b; r= rYs=  sqrt( (pow(rXs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy  ,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
+            //      s= b; r= rYs=  sqrt( (pow(rXs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy*s,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
             break;
     }
     return r;
 }
 
+// not used yet
 char * fTx_yzFmt(char x, char y, char z, int mode, char* s) {
     char X= toupper(x);
     char Y= toupper(y);
@@ -2572,18 +2586,21 @@ float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode) {
     float rXs, rxs, rXc, rxc, rYs, rys, rYc, ryc, rZs, rzs, rZc, rzc;
 
     switch(x) {
+       case 'u': Xs= Us; xs= us; Xc= Uc; xc= uc;  rXs= rUs; rxs= rus; rXc= rUc; rxc= ruc; break;
        case 'b': Xs= Bs; xs= bs; Xc= Bc; xc= bc;  rXs= rBs; rxs= rbs; rXc= rBc; rxc= rbc; break;
        case 'v': Xs= Vs; xs= vs; Xc= Vc; xc= vc;  rXs= rVs; rxs= rvs; rXc= rVc; rxc= rvc; break;
        case 'r': Xs= Rs; xs= rs; Xc= Rc; xc= rc;  rXs= rRs; rxs= rrs; rXc= rRc; rxc= rrc; break;
        case 'i': Xs= Is; xs= is; Xc= Ic; xc= ic;  rXs= rIs; rxs= ris; rXc= rIc; rxc= ric; break;
     }
     switch(y) {
+       case 'u': Ys= Us;  Yc= Uc;  rYs= rUs;  rYc= rUc; break;
        case 'b': Ys= Bs;  Yc= Bc;  rYs= rBs;  rYc= rBc; break;
        case 'v': Ys= Vs;  Yc= Vc;  rYs= rVs;  rYc= rVc; break;
        case 'r': Ys= Rs;  Yc= Rc;  rYs= rRs;  rYc= rRc; break;
        case 'i': Ys= Is;  Yc= Ic;  rYs= rIs;  rYc= rIc; break;
     }
     switch(z) {
+       case 'u': Zs= Us;  Zc= Uc;  rZs= rUs;  rZc= rUc; break;
        case 'b': Zs= Bs;  Zc= Bc;  rZs= rBs;  rZc= rBc; break;
        case 'v': Zs= Vs;  Zc= Vc;  rZs= rVs;  rZc= rVc; break;
        case 'r': Zs= Rs;  Zc= Rc;  rZs= rRs;  rZc= rRc; break;
@@ -2599,10 +2616,10 @@ float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode) {
          r= rXs= sqrt((pow(rxs,2)+pow(rXc,2)+pow(rxc,2)) + pow(Tx_yz*s,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rYs,2)+pow(rZs,2)+pow(rYc,2)+pow(rZc,2))/pow(s,2)));
          break;
       case 12: s= ((Xs-xs)-(Xc-xc));
-         r= rYs= sqrt((pow(rZs,2)+pow(rYc,2)+pow(rZc,2)) + pow(Tx_yz*s,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
+         r= rYs= sqrt((pow(rZs,2)+pow(rYc,2)+pow(rZc,2)) + pow(s/Tx_yz,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
          break;
       case 13: s= ((Xs-xs)-(Xc-xc));
-         r= rYs= sqrt((pow(rYs,2)+pow(rYc,2)+pow(rZc,2)) + pow(Tx_yz*s,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
+         r= rYs= sqrt((pow(rYs,2)+pow(rYc,2)+pow(rZc,2)) + pow(s/Tx_yz,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
          break;
     }
     return r;
