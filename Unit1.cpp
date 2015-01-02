@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.28
+#define Version  2.29
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -789,6 +789,7 @@ bool FILTC_displayed[FILTC_NUM];
 AnsiString Formula= "";
 short Method_Mask;
 short GroupNum;
+AnsiString ObsCode;
 
 //---------------------------------------------------------------------------
 void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
@@ -799,10 +800,11 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    int i, j, k, l, m, sdi, sdii, n, gdi= 0;
    AnsiString s, r, sx, st;
    StarData sdt;
+   ObsCode= "";
 
    // Extinction turned off
    applyExtinction->Checked= false;
-   
+
    // init
    // reset flags for displaying information in the output. Only want to display
    // the transforms and the formulas once in the output
@@ -838,6 +840,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                 ShowMessage("The file must be of #TYPE=EXTENDED");
                 return;
              }
+         } else
+         if(s.SubString(2, 8)== "OBSCODE=") {
+            ObsCode= s.SubString(10, 10).TrimLeft().TrimRight();
          } else
          if(s.SubString(2, 6)== "DELIM=") {
             if(s.SubString(8, 3).LowerCase()=="tab") delim= '\t';
@@ -1174,7 +1179,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             sd[i].CMAGex= sd[i].CMAGraw - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
             sd[i].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].CMAGex, sd[i].CMAGraw, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
             sd[i].VMAGex= sd[i].VMAGinst  - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
-            //  todo  sd[i].VERR= 
+            //  todo  sd[i].VERR=
             sd[i].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].VMAGex, sd[i].VMAGinst, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
          } else {
             sd[i].CMAGex= sd[i].CMAGraw;
@@ -1281,6 +1286,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= %0.3f - %0.3f", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw);
                }
                */
+           } else { // failed transform. clean up for TestTC report
+              sd[i].VMAGrep= sd[i].VMAGraw;
+              sd[i].VERRt= sd[i].VERR;
            }
 
 
@@ -1356,6 +1364,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             r.sprintf("\"%-15s\"   %s %s %3s %8.3f %8.3f %8.3f    not transformed", sd[j].NAME, sd[j].DATEs, sd[j].FILT, sd[j].GROUPs
                                   , sd[j].VMAGraw, sd[j].VMAGinst, sd[j].VMAG );// ,    sd[j].VMAGt, sd[j].VMAGt- sd[j].VMAG, sd[j].VMAGrep, sd[j].VERR, sd[j].VERRt);
             Memo4->Lines->Add(r);
+            sd[j].recordT= ""; // no transformed record
         } else {  // display transformed data
             // Standard info blocks will be output once
             if(!trans_display) { // show the transform coefficients just once
@@ -1489,16 +1498,37 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
     // TC Test report
     if(TestTCCB->Checked) {
        Memo4->Lines->Add("\r\n    Transform Coefficient Test Report  \r\n");
-       Memo4->Lines->Add("name      filter   VMAGt   Refmag     diff    error");
+       Memo4->Lines->Add("name      filter  VMAGrep  Refmag     diff    error  transformed");
        for(i= 0; i<sdi; i++) {
           if(sd[i].record[1]!='#') { // not aggregated
-             Memo4->Lines->Add(st.sprintf("%11s %3s %8.3f %8.3f %8.3f %8.3f", sd[i].NAME, sd[i].FILT, sd[i].VMAGt, sd[i].KREFmag, sd[i].VMAGt - sd[i].KREFmag, sd[i].VERRt));
+             Memo4->Lines->Add(st.sprintf("%11s %3s %8.3f %8.3f %8.3f %8.3f    %3s", sd[i].NAME, sd[i].FILT, sd[i].VMAGrep, sd[i].KREFmag, sd[i].VMAGrep - sd[i].KREFmag, sd[i].VERRt, sd[i].TRANS?"yes":"no"));
           }
        }
        // try to derive coefficients?
        //  need to extinct since they are from all over....
 
     }
+
+    // log the process
+    s= "http://www.gasilvis.com/TA/TAlog.php?logentry=";
+    s+= ObsCode;
+    s+= ","+ FormatFloat("0.00", Version);
+    s+= ","+ Formula; // methodology
+    s+= AggregateCB->Checked? ",true": ",false"; // aggregation?
+    s+= TestTCCB->Checked? ",true": ",false";    // TestTC?
+
+    HttpCli1->URL        = s;
+    HttpCli1->RcvdStream = NULL;
+    try {
+       Form1->HttpCli1->Get();
+    } __except (TRUE) {
+             Form1->Memo4->Lines->Add(s);
+             Form1->Memo4->Lines->Add("GET Failed !");
+             Form1->Memo4->Lines->Add("StatusCode   = " + IntToStr(Form1->HttpCli1->StatusCode));
+             Form1->Memo4->Lines->Add("ReasonPhrase = " + Form1->HttpCli1->ReasonPhrase);
+             //return 0;
+    }
+
 
 }
 //---------------------------------------------------------------------------
@@ -2467,8 +2497,8 @@ void __fastcall TForm1::Button1Click(TObject *Sender)
     HttpCli1->Proxy      = "";//ProxyHostEdit->Text;
     HttpCli1->ProxyPort  = "";//ProxyPortEdit->Text;
     HttpCli1->RcvdStream = NULL;
-   try {
-        HttpCli1->Get();
+    try {
+        HttpCli1->Get   ();
     } __except (TRUE) {
         Memo4->Lines->Add("GET Failed !");
         Memo4->Lines->Add("StatusCode   = " + IntToStr(HttpCli1->StatusCode));
