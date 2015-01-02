@@ -1,6 +1,6 @@
 object Form1: TForm1
   Left = 192
-  Top = 155
+  Top = 29
   Width = 1141
   Height = 839
   HorzScrollBar.Visible = False
@@ -120,7 +120,7 @@ object Form1: TForm1
         Width = 97
         Height = 17
         Hint = 'These transforms are recommended by the AAVSO'
-        Caption = 'AAVSO '
+        Caption = 'AAVSO'
         Checked = True
         TabOrder = 6
         TabStop = True
@@ -914,7 +914,7 @@ object Form1: TForm1
           OnExit = NumericOnExit
         end
         object Panel1: TPanel
-          Left = 16
+          Left = 8
           Top = 32
           Width = 33
           Height = 665
@@ -1488,7 +1488,7 @@ object Form1: TForm1
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 781
     DesignFormLeft = 192
-    DesignFormTop = 155
+    DesignFormTop = 29
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18
@@ -1515,7 +1515,7 @@ object Form1: TForm1
   object HttpCli1: THttpCli
     LocalAddr = '0.0.0.0'
     ProxyPort = '80'
-    Agent = 'Mozilla/4.0 (compatible; ICS)'
+    Agent = 'Mozilla/4.0'
     Accept = 'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*'
     NoCache = False
     ContentTypePost = 'application/x-www-form-urlencoded'
