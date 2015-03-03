@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.29
+#define Version  2.30
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -1368,7 +1368,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
         } else {  // display transformed data
             // Standard info blocks will be output once
             if(!trans_display) { // show the transform coefficients just once
-               Memo2->Lines->Add("#SOFTWARE=TransformApplier, V"+ FormatFloat("0.00", Version));
+               //Memo2->Lines->Add("#SOFTWARE=TransformApplier, V"+ FormatFloat("0.00", Version));
+               Memo2->Lines->Add("#  TransformApplier, V"+ FormatFloat("0.00", Version));
                Memo2->Lines->Add("#   transform coefficients from "+ INIfilename + "   "+ DateToStr(Date() )  );
                Memo2->Lines->Add("#      desc: "+ setupEdit->Text);
                for(int i= 0; i<NumTCoef; i++)
