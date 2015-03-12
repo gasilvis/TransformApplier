@@ -1529,7 +1529,7 @@ object Form1: TForm1
     OnDocBegin = HttpCli1DocBegin
     OnDocEnd = HttpCli1DocEnd
     SocksAuthentication = socksNoAuthentication
-    Left = 140
-    Top = 606
+    Left = 188
+    Top = 550
   end
 end
