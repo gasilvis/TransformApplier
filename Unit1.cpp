@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.30
+#define Version  2.31
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -2582,13 +2582,13 @@ float fTxy (char x, char y, float Txy, float rTxy, int mode) {
        case 11: // Xs= a + Txy * b
 	        /*a= Ys + (Xc-Yc);*/ ra2= pow(rYs,2)+pow(rXc,2)+pow(rYc,2);
 			b= ((xs-ys)-(xc-yc)); rb2= pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2);
-			r= rXs= sqrt( ra2 + pow(Txy*b,2)*( pow(rTxy/Txy,2) + rb2/pow(b,2) ));
+			r= rXs= sqrt( ra2 + pow(Txy*b,2)*( pow(rTxy/Txy,2) + ((b==0)?0:rb2/pow(b,2)) ));
             //s= b; r= rXs=  sqrt( (pow(rYs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
             break;
        case 12: // Ys= a - Txy * b
 	        /*a= Xs - (Xc-Yc);*/ ra2= pow(rXs,2)+pow(rXc,2)+pow(rYc,2);
 			b= ((xs-ys)-(xc-yc)); rb2= pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2);
-			r= rYs= sqrt( ra2 + pow(Txy*b,2)*( pow(rTxy/Txy,2) + rb2/pow(b,2) ));
+			r= rYs= sqrt( ra2 + pow(Txy*b,2)*( pow(rTxy/Txy,2) + ((b==0)?0:rb2/pow(b,2)) ));
             // orig s= b; r= rYs=  sqrt( (pow(rXs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy  ,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
             //      s= b; r= rYs=  sqrt( (pow(rXs,2)+pow(rXc,2)+pow(rYc,2)) +  pow(Txy*s,2)* (pow(rTxy/Txy,2) + (pow(rxs,2)+pow(rys,2)+pow(rxc,2)+pow(ryc,2))/pow(s,2))  );
             break;
@@ -2644,13 +2644,16 @@ float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode) {
       case 3: r= Zs= Ys + (Yc-Zc) + ((Xs-xs)-(Xc-xc)) / Tx_yz;  break;
 
       case 11: s= ((Ys-Zs)-(Yc-Zc));
-         r= rXs= sqrt((pow(rxs,2)+pow(rXc,2)+pow(rxc,2)) + pow(Tx_yz*s,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rYs,2)+pow(rZs,2)+pow(rYc,2)+pow(rZc,2))/pow(s,2)));
+         if(s==0) r= rXs= 0;
+         else r= rXs= sqrt((pow(rxs,2)+pow(rXc,2)+pow(rxc,2)) + pow(Tx_yz*s,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rYs,2)+pow(rZs,2)+pow(rYc,2)+pow(rZc,2))/pow(s,2)));
          break;
       case 12: s= ((Xs-xs)-(Xc-xc));
-         r= rYs= sqrt((pow(rZs,2)+pow(rYc,2)+pow(rZc,2)) + pow(s/Tx_yz,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
+         if(s==0) r= rYs= 0;
+         else r= rYs= sqrt((pow(rZs,2)+pow(rYc,2)+pow(rZc,2)) + pow(s/Tx_yz,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
          break;
       case 13: s= ((Xs-xs)-(Xc-xc));
-         r= rYs= sqrt((pow(rYs,2)+pow(rYc,2)+pow(rZc,2)) + pow(s/Tx_yz,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
+         if(s==0) r= rYs= 0;
+         else r= rYs= sqrt((pow(rYs,2)+pow(rYc,2)+pow(rZc,2)) + pow(s/Tx_yz,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
          break;
     }
     return r;
