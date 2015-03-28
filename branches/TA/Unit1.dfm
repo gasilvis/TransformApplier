@@ -1295,9 +1295,12 @@ object Form1: TForm1
           'coefficients page, you will get a complaint from TA.'
           '- The Alternate transform equation set uses:'
           'for      U       B       V       R       I'
-          'BVRI    Tub    Tbv     Tv_bv   Tvr     Tri'
-          'BVR     Tub    Tb_bv   Tbv     Tvr'
-          'BVI     Tub    Tb_bv   Tbv             Tvi'
+          'UBVRI   Tub    Tbv     Tv_bv   Tvr     Tri'
+          'UBVR    Tub    Tb_bv   Tbv     Tvr'
+          'UBVI    Tub    Tb_bv   Tbv             Tvi'
+          'BVRI           Tbv     Tv_bv   Tvr     Tri'
+          'BVR            Tb_bv   Tbv     Tvr'
+          'BVI            Tb_bv   Tbv             Tvi'
           'VRI                    Tv_vr   Tvr     Tri'
           'BV             Tb_bv   Tbv'
           'VR                     Tv_vr   Tvr'
@@ -1530,6 +1533,6 @@ object Form1: TForm1
     OnDocEnd = HttpCli1DocEnd
     SocksAuthentication = socksNoAuthentication
     Left = 188
-    Top = 550
+    Top = 574
   end
 end
