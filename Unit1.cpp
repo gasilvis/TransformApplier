@@ -42,7 +42,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.31
+#define Version  2.32
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -2281,12 +2281,13 @@ void __fastcall TForm1::Saveuntransformedobsfile1Click(TObject *Sender)
    SaveDialog1->Filter = "TXT files (*.txt)|*.TXT";
    if(SaveDialog1->Execute()) {
       Memo1->Lines->SaveToFile(SaveDialog1->FileName);
+      UnTransformedFile= SaveDialog1->FileName;
    }
    OpenDialog1->InitialDir= SaveDialog1->InitialDir;
    // Save the directory
    TIniFile *ini;
    ini = new TIniFile(INIfilename);
-   ini->WriteString("Setup", "Dir", OpenDialog1->InitialDir);
+   ini->WriteString("Setup", "Dir", OpenDialog1->InitialDir); // nb same as SaveDialog1
    delete ini;
 }
 //---------------------------------------------------------------------------
@@ -2414,7 +2415,7 @@ void __fastcall TForm1::Button2Click(TObject *Sender)
 
 }
 //---------------------------------------------------------------------------
-#define cpBufSize 10000
+#define cpBufSize 60000
 //int __fastcall TForm1::getCREFMAG(TObject *Sender, StarData* sd)
 int __fastcall getREFMAG(StarData* sd, bool getc)
 {
