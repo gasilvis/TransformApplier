@@ -42,7 +42,17 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.32
+#define Version  2.33
+// if you change the version, change it to in  TAlog.php
+/* 2.33
+  - version reminder and download
+  - delim's clarified
+  - #KREFMAG allowed. #CREFMAG can have C or C and K
+  - Comp Ref error excluded from final error computation
+  - comment field stuffed with support information including TA version
+  - Help updated
+  - 
+*/
    // help note on ensemble
    // coefficients page: can't check boxes, group extinction stuff
 bool DEBUG= false;
@@ -120,6 +130,7 @@ float rTub, rTbv, rTbr,   rTbi,   rTvr, rTvi,   rTri
 float  Us,  us,  Bs,  bs,  Vs,  vs,  Rs,  rs,  Is,  is,   Uc,  uc,  Bc,  bc,  Vc,  vc,  Rc,  rc,  Ic,  ic,  oUs,  oBs,  oVs,  oRs,  oIs;
 float rUs, rus, rBs, rbs, rVs, rvs, rRs, rrs, rIs, ris,  rUc, ruc, rBc, rbc, rVc, rvc, rRc, rrc, rIc, ric, roUs, roBs, roVs, roRs, roIs;
 AnsiString Uts, Bts, Vts, Rts, Its;  // DATEs of the star providing this data
+char Utdesc[200], Btdesc[200], Vtdesc[200], Rtdesc[200], Itdesc[200]; // name and values of the transforms used, ready for NOTES
 
 float* Extinction[]= { &Eb, &Ev, &Er, &Ei, &Eu }; // filter order
 
@@ -160,7 +171,41 @@ Coef EC[]= { // matches filter enum  eg FILT_Bi
 
 void __fastcall TForm1::FormCreate(TObject *Sender)
 {
+   TStream *DataIn;
+   char cp[10000];
+   float cver;
+   AnsiString s;
+
    Form1->Caption= "TA, the AAVSO Transform Applier application, "+ FormatFloat("version 0.00", Version);
+
+   HttpCli1->URL        = "http://www.gasilvis.com/TA/TAlog.php"; // returns currentVersion
+   HttpCli1->RcvdStream = NULL;
+   try {
+      HttpCli1->Get();
+      //Form1->Memo4->Lines->Add("StatusCode = " + IntToStr(Form1->HttpCli1->StatusCode));
+      //for (I = 0; I < Form1->HttpCli1->RcvdHeader->Count; I++)
+      //   Form1->Memo4->Lines->Add("hdr>" + Form1->HttpCli1->RcvdHeader->Strings[I]);
+      DataIn = new TFileStream(Form1->HttpCli1->DocName, fmOpenRead);
+      //Memo4->Lines->LoadFromStream(DataIn);
+      DataIn->ReadBuffer(cp, min(10000, DataIn->Size));
+      delete DataIn;
+      sscanf(cp, "%f", &cver);
+      if(cver > Version) {
+         versionLabel->Tag= 1;
+         versionLabel->Font->Color= clBlue;
+         versionLabel->Caption= s.sprintf("Click here to download version %s", cp);
+      } else {
+         versionLabel->Caption= s.sprintf("%s is the latest version of TA", cp);
+      }
+   } __except (TRUE) {
+      Form1->Memo4->Lines->Add("GET Failed !");
+      Form1->Memo4->Lines->Add("StatusCode   = " + IntToStr(Form1->HttpCli1->StatusCode));
+      Form1->Memo4->Lines->Add("ReasonPhrase = " + Form1->HttpCli1->ReasonPhrase);
+      //return 0;
+   }
+
+
+
    //nb  The labels are now checkboxes
    // have to assign here because they don't exist until here
    TC[0].coeflab= Label1,   TC[0].coefedit= TbvEdit;  TC[0].erroredit= rTbvEdit;
@@ -407,6 +452,7 @@ typedef struct StarData { // eg
 } StarData;
 #define sdiMAX   1000
 StarData sd[sdiMAX];
+int sdi;  // count of entries in sd.
 
 void SetStarData(StarData d);
 void ProcessStarData(StarData *d, unsigned short fc);
@@ -790,17 +836,17 @@ AnsiString Formula= "";
 short Method_Mask;
 short GroupNum;
 AnsiString ObsCode;
-
+char delim, ndelim;
 //---------------------------------------------------------------------------
 void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 {
-   char delim= ';';
    unsigned short fc; // filter combo and index
-   float crefmag= -999, x, creferr, krefmag, kreferr;
-   int i, j, k, l, m, sdi, sdii, n, gdi= 0;
+   float crefmag= -999, x, creferr, krefmag= -999, kreferr;
+   int xi, i, j, k, l, m/*, sdi*/, sdii, n, gdi= 0;
    AnsiString s, r, sx, st;
    StarData sdt;
    ObsCode= "";
+   delim= ';';  ndelim= '|'; // defaults
 
    // Extinction turned off
    applyExtinction->Checked= false;
@@ -850,20 +896,30 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             else { // simple method. assumes the DELIM= x
                j= 7;
                while(s[++j]) {
-                  if(s[j]!=' ') {
+                  if(s[j]!=' ') { // first non blank char
                      delim= s[j];
                      break;
                   }
                }
             }
+            //todo  restrict delim choices   eg, not ==
+            ndelim= (delim=='|')? ';': '|'; // | (use ; if delim is |
          } else
          if(s.SubString(2, 8)== "CREFMAG=") {
-            if(4 != sscanf(s.SubString(10, s.Length()-9).c_str(),"%f %f %f %f",  &crefmag, &creferr, &krefmag, &kreferr)) {
-                crefmag=  -999;
-                ShowMessage("Bad #CREFMAG comment; must have value AND error term for both C and K .["+s.SubString(10, s.Length()-9)+"]"  );
-            //crefmag= s.SubString(10, 20).ToDouble();
-//               ShowMessage(" missed CREFMAG");     EConvertError
+            xi= sscanf(s.SubString(10, s.Length()-9).c_str(),"%f %f %f %f",  &crefmag, &creferr, &krefmag, &kreferr);
+            if(xi==2) {
+               krefmag= -999; // only crefmag defined
+            } else if(xi!=4) {
+               crefmag= krefmag= -999; // neither defined
+               ShowMessage("Bad #CREFMAG comment: must have value AND error term for either C or both C and K .["+s.SubString(10, s.Length()-9)+"]"  );
             } // else   the crefmag/err will be picked up by the next star record
+         } else
+         if(s.SubString(2, 8)== "KREFMAG=") {
+            xi= sscanf(s.SubString(10, s.Length()-9).c_str(),"%f %f",  &krefmag, &kreferr);
+            if(xi!=2) {
+               krefmag= -999; // only crefmag defined
+               ShowMessage("Bad #KREFMAG comment: must have value AND error term for K.["+s.SubString(10, s.Length()-9)+"]"  );
+            } // else   the krefmag/err will be picked up by the next star record
          }
 
       } // end comment line
@@ -1001,15 +1057,16 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          sd[sdi].CHART= s.SubString(k, j- 1);
          k+= j;
 
-         sd[sdi].NOTES= s.SubString(k, 100);
-
+         // if they added a comment in the edit window, the first char might be \n
+         if(s.SubString(k,1)== '\n') k++; // skip it
+         sd[sdi].NOTES= s.SubString(k, 1000);
+         // clear if it is na
+         if(sd[sdi].NOTES.UpperCase() == "NA") sd[sdi].NOTES= "";
 
          // get REFMAG info
          if(crefmag != -999) { // found in a prior comment
             sd[sdi].CREFmag= crefmag;
             sd[sdi].CREFerr= creferr;
-            sd[sdi].KREFmag= krefmag;
-            sd[sdi].KREFerr= kreferr;
             crefmag= -999; // don't use again.
          } else {
             for(int i= 0; i< sdi; i++) { // look in prior star records
@@ -1021,6 +1078,19 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   }
                }
             }
+            if(-999==sd[sdi].CREFmag) { // try internet
+               if(!getREFMAG(&sd[sdi], true)) {
+                  sd[sdi].ErrorMsg+= " No CREFMAG available. Possibly bad chart reference";
+                  sd[sdi].processed= true; // skip record
+               }
+            }
+         }
+
+         if(krefmag != -999) { // found in a prior comment
+            sd[sdi].KREFmag= krefmag;
+            sd[sdi].KREFerr= kreferr;
+            krefmag= -999; // don't use again.
+         } else {
             for(int i= 0; i< sdi; i++) { // look in prior star records
                if(sd[sdi].KNAME==sd[i].KNAME) { // same star
                   if(sd[sdi].filter==sd[i].filter && !sd[i].processed) { // same filter and not rejected
@@ -1030,23 +1100,13 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   }
                }
             }
-            if(-999==sd[sdi].CREFmag) { // try internet
-               if(!getREFMAG(&sd[sdi], true)) {
-                  sd[sdi].ErrorMsg+= " No CREFMAG available. Possibly bad chart reference";
-                  sd[sdi].processed= true; // skip record
-                  //break;  // full break here
-               }
-            }
             if(-999==sd[sdi].KREFmag) { // try internet
                if(!getREFMAG(&sd[sdi], false)) {
                   sd[sdi].ErrorMsg+= " No KREFMAG available. Possibly bad chart reference";
                   sd[sdi].processed= true; // skip record
-                  //break;  // full break here
                }
             }
          }
-
-
 
       } // end data line
    } // end loop through input lines
@@ -1086,7 +1146,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                    sdt.CMAGraw+= sd[j].CMAGraw;
                    sdt.KMAGraw+= sd[j].KMAGraw;
                    sdt.AMASS+= sd[j].AMASS;
-                   if(sd[j].NOTES!="na") sdt.NOTES+= sd[j].NOTES; // don't do nanana!
+                   if(sd[j].NOTES!="na") sdt.NOTES+= " "+ sd[j].NOTES; // don't do nanana!
                    // kill j record, falling through as comment
                    sd[j].record= "# aggregated "+ sd[j].record;
                    sd[j].processed= true;
@@ -1104,7 +1164,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                sdt.CMAGraw/= n;
                sdt.KMAGraw/= n;
                sdt.AMASS/= n;
-               sdt.NOTES+= s.sprintf("  %i records aggregated", n);
+               sdt.NOTES+= s.sprintf("%c%i records aggregated", ndelim, n);
                // rewrite .record   todo
                s= sdt.NAME+ delim;
                sdt.DATEs= FormatFloat("#.00000", sdt.DATE);
@@ -1151,14 +1211,14 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    for(i= 0; i< sdi; i++) {
       if(sd[i].processed==false) {
          // final check
-         if(sd[i].CREFmag == 0) {
-            sd[i].ErrorMsg+= " CREFMAG is 0.";
-            sd[i].processed= true;
-         } else{
-            sd[i].narr+= st.sprintf("\r\nCREFMAG= %cc= %0.3f +/- %0.3f", toupper(FILTname[sd[i].filter]), sd[i].CREFmag, sd[i].CREFerr);
-         }
+         //if(sd[i].CREFmag == 0) {    shouldn't happen
+         //   sd[i].ErrorMsg+= " CREFMAG is 0.";
+         //   sd[i].processed= true;
+         //} else{
+            sd[i].narr+= st.sprintf("\r\nCREFMAG= %cc= %0.3f +/- %0.3f (nb. comp ref error is excluded from final error computation)", toupper(FILTname[sd[i].filter]), sd[i].CREFmag, sd[i].CREFerr);
+         //}
 
-         // correct VMAG from AIPWIN reported value to observed value
+         // correct VMAG to observed value  VMAGINS
          if(sd[i].MTYPE == 'S') { // "STD"
             sd[i].VMAGinst= sd[i].VMAGraw + sd[i].CMAGraw - sd[i].CREFmag;
             sd[i].narr+= st.sprintf("\r\nSTD inst mag: Vinst= %0.3f = %0.3f + %0.3f - %0.3f", sd[i].VMAGinst, sd[i].VMAGraw, sd[i].CMAGraw, sd[i].CREFmag);
@@ -1173,13 +1233,13 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          // apply Extinction correction
          if(applyExtinction->Checked && sd[i].AMASSna) {
             applyExtinction->Checked= false;
-            ShowMessage("Obs found witn AMASS na; Extinction feature turned off");
+            ShowMessage("Obs found with AMASS na; Extinction feature turned off");
          }
          if(applyExtinction->Checked) {
             sd[i].CMAGex= sd[i].CMAGraw - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
             sd[i].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].CMAGex, sd[i].CMAGraw, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
             sd[i].VMAGex= sd[i].VMAGinst  - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
-            //  todo  sd[i].VERR=
+            //  todo  add extinction error to sd[i].VERR=  (nb. this is v and c error combined)
             sd[i].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].VMAGex, sd[i].VMAGinst, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
          } else {
             sd[i].CMAGex= sd[i].CMAGraw;
@@ -1187,10 +1247,14 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          }
          // corrections done
          sd[i].CMAG= sd[i].CMAGex;
-         sd[i].CERR= 0; // same error as vmag, fully correlated
-         sd[i].narr+= st.sprintf("\r\n%cc= %0.3f +/- %0.3f (assume correlated with v error)", tolower(FILTname[sd[i].filter]), sd[i].CMAG, sd[i].CERR);
+         sd[i].CERR= 0; // same error as vmag, fully correlated;  not really. VERR is supposed to include CERR
+         sd[i].narr+= st.sprintf("\r\n%cc= %0.3f +/- %0.3f (c error is included with VERR)", tolower(FILTname[sd[i].filter]), sd[i].CMAG, sd[i].CERR);
          sd[i].VMAG= sd[i].VMAGex;
          sd[i].narr+= st.sprintf("\r\n%cs= %0.3f +/- %0.3f", tolower(FILTname[sd[i].filter]), sd[i].VMAG, sd[i].VERR);
+         // update NOTES
+         sd[i].NOTES+= st.sprintf("%cCREFMAG=%.3f%cCREFERR=%.3f", ndelim, sd[i].CREFmag, ndelim, sd[i].CREFerr);
+         sd[i].NOTES+= st.sprintf("%cKREFMAG=%.3f%cKREFERR=%.3f", ndelim, sd[i].KREFmag, ndelim, sd[i].KREFerr);
+         sd[i].NOTES+= st.sprintf("%cVMAGINS=%.3f%cVERR=%.3f", ndelim, sd[i].VMAG, ndelim, sd[i].VERR);
       }
    }
 
@@ -1255,6 +1319,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             ProcessStarData(&sd[i], fc); // sets processed flag
 
             if(sd[i].TRANS) { // transform successful. capture data used
+               // and to NOTES
+               sd[i].NOTES+= st.sprintf("%cTAver=%.2f", ndelim, Version);
                sd[i].FILTC= fc;
                k= FILTC_mask2index(sd[i].FILTC);
                for(m= 0; m<FILTC_desc_rows; m++) {
@@ -1274,7 +1340,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
                sd[i].VMAGrep= sd[i].VMAGt;
                sd[i].narr+= st.sprintf("\r\nVMAGtrans= %0.3f", sd[i].VMAGt);
-               /*
+               /*   don't re standardize
                if(sd[i].MTYPE == 'S') { // "STD"
                   sd[i].VMAGrep= ( sd[i].VMAGt - sd[i].CMAGraw ) + sd[i].CREFmag;
                   sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= (%0.3f - %0.3f) + %0.3f  ", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw, sd[i].CREFmag);
@@ -1286,6 +1352,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   sd[i].narr+= st.sprintf("\r\nVMAGreport= %0.3f= %0.3f - %0.3f", sd[i].VMAGrep, sd[i].VMAGt, sd[i].CMAGraw);
                }
                */
+
            } else { // failed transform. clean up for TestTC report
               sd[i].VMAGrep= sd[i].VMAGraw;
               sd[i].VERRt= sd[i].VERR;
@@ -1550,8 +1617,8 @@ void SetStarData(StarData d)
    }
 }
 
-float fTxy   (char x, char y,         float Txy,   float rTxy,   int mode);
-float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode);
+float fTxy   (char x, char y,         float Txy,   float rTxy,   int mode, char* tdesc);
+float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode, char* tdesc);
 
 #define MAXITER 15
 void ProcessStarData(StarData *d, unsigned short fc)
@@ -1561,6 +1628,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
    d->TRANS= true;
    d->FILTC= fc;  // which combination used
    rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; // default error is the obs error
+   Utdesc[0]= Btdesc[0]= Vtdesc[0]= Rtdesc[0]= Itdesc[0]= 0;
    switch(fc) {
       case (FILTC_BVRIc):
          if(Tr_ri==0 || Tri==0 || Tv_vr==0 || Tvr==0 || Tbv==0) {
@@ -1569,11 +1637,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
             break;
          }
          Rs = rs + (Rc - rc) + Tr_ri * (((Rc - Ic) + Tri * ((rs - is) - (rc - ic))) - (Rc - Ic));
+          sprintf(Rtdesc, "%cTr_ri=%.4f%cTr_riErr=%.4f%cTri=%.4f%cTriErr=%.4f", ndelim, Tr_ri, ndelim, rTr_ri, ndelim, Tri, ndelim, rTri);
          Is = Rs - ((Rc - Ic) + Tri * ((rs - is) - (rc - ic)));
+          sprintf(Itdesc, "%cTri=%.4f%cTriErr=%.4f", ndelim, Tri, ndelim, rTri);
          Vs = vs + (Vc - vc) + Tv_vr * Tvr * ((vs - rs) - (vc - rc));
+          sprintf(Vtdesc, "%cTv_vr=%.4f%cTv_vrErr=%.4f%cTvr=%.4f%cTvrErr=%.4f", ndelim, Tv_vr, ndelim, rTv_vr, ndelim, Tvr, ndelim, rTvr);
          Bs = Vs + (Bc - Vc) + Tbv * ((bs - vs) - (bc - vc));
+          sprintf(Btdesc, "%cTbv=%.4f%cTbvErr=%.4f", ndelim, Tbv, ndelim, rTbv);
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs
             + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
+         // no error computation
          break;
 
       case (FILTC_BVRIa):
@@ -1585,10 +1658,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
-            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
-            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
+            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
+            Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1, Rtdesc); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
+            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs
@@ -1596,10 +1669,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
-            rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11);
-            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11);
+            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
+            rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
+            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1639,10 +1712,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = fTxy( b, v, Tbv, rTbv, 1);
-            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1);
-            Rs = fTxy( v, r, Tvr, rTvr, 2);
-            Is = fTxy( r, i, Tri, rTri, 2);
+            Bs = fTxy( b, v, Tbv, rTbv, 1, Btdesc);
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
+            Rs = fTxy( v, r, Tvr, rTvr, 2, Rtdesc);
+            Is = fTxy( r, i, Tri, rTri, 2, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BVRI Arne alternate : B @ "+ sd[sf[FILT_Bi]].DATEs
@@ -1650,10 +1723,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rBs = fTxy( b, v, Tbv, rTbv, 11);
-            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
-            rRs = fTxy( v, r, Tvr, rTvr, 12);
-            rIs = fTxy( r, i, Tri, rTri, 12);
+            rBs = fTxy( b, v, Tbv, rTbv, 11, Btdesc);
+            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
+            rRs = fTxy( v, r, Tvr, rTvr, 12, Rtdesc);
+            rIs = fTxy( r, i, Tri, rTri, 12, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1667,8 +1740,8 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
-            Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1);
+            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
+            Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
             //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             //Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
@@ -1677,8 +1750,8 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11);
+            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1694,16 +1767,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
-            Vs = fTxy(b, v, Tbv, rTbv, 2);
+            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
+            Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTxy(b, v, Tbv, rTbv, 12);
+            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1721,16 +1794,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             //Vs = vs + (Vc-vc) + Tv_vr * ((Vs-Rs)-(Vc-Rc));
             //Rs = rs + (Rc-rc) + Tr_vr * ((Vs-Rs)-(Vc-Rc));
-            Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1);
-            Rs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 1);
+            Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
+            Rs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 1, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11);
-            rRs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 11);
+            rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
+            rRs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 11, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1746,16 +1819,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1);
-            Rs = fTxy(v, r, Tvr, rTvr, 2);
+            Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
+            Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11);
-            rRs = fTxy(v, r, Tvr, rTvr, 12);
+            rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
+            rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1772,18 +1845,18 @@ void ProcessStarData(StarData *d, unsigned short fc)
             //Vs = vs + (Vc-vc) + Tv_vi * ((Vs-Is)-(Vc-Ic));
             //Rs = rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
             //Is = Vs - (Vc-Ic) - Tvi   * ((vs-is)-(vc-ic));
-            Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1);
-            Rs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 1);
-            Is = fTxy(v, i, Tvi, rTvi, 2);
+            Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1, Vtdesc);
+            Rs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 1, Rtdesc);
+            Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+ " using:  V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11);
-            rRs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 11);
-            rIs = fTxy(v, i, Tvi, rTvi, 12);
+            rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11, Vtdesc);
+            rRs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
+            rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1799,18 +1872,18 @@ void ProcessStarData(StarData *d, unsigned short fc)
             //Vs = vs + (Vc-vc) + Tv_vr    * ((Vs-Rs)-(Vc-Rc));
             //Rs = Vs - (Vc-Rc) - Tvr   * ((vs-rs)-(vc-rc));
             //Is = Rs - (Rc-Ic) - Tri   * ((rs-is)-(rc-ic));
-            Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1);
-            Rs = fTxy(v, r, Tvr, rTvr, 2);
-            Is = fTxy(r, i, Tri, rTri, 2);
+            Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
+            Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
+            Is = fTxy(r, i, Tri, rTri, 2, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using:  V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11);
-            rRs = fTxy(v, r, Tvr, rTvr, 12);
-            rIs = fTxy(r, i, Tri, rTri, 12);
+            rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
+            rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
+            rIs = fTxy(r, i, Tri, rTri, 12, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1821,8 +1894,11 @@ void ProcessStarData(StarData *d, unsigned short fc)
             break;
          }
          Rs = rs + (Rc - rc) + Tr_ri * (((Rc - Ic) + Tri * ((rs - is) - (rc - ic))) - (Rc - Ic));
+          sprintf(Rtdesc, "%cTr_ri=%.4f%cTr_riErr=%.4f%cTri=%.4f%cTriErr=%.4f", ndelim, Tr_ri, ndelim, rTr_ri, ndelim, Tri, ndelim, rTri);
          Is = Rs - ((Rc - Ic) + Tri * ((rs - is) - (rc - ic)));
+          sprintf(Itdesc, "%cTri=%.4f%cTriErr=%.4f", ndelim, Tri, ndelim, rTri);
          Vs = vs + (Vc - vc) + Tv_vr * Tvr * ((vs - rs) - (vc - rc));
+          sprintf(Vtdesc, "%cTv_vr=%.4f%cTv_vrErr=%.4f%cTvr=%.4f%cTvrErr=%.4f", ndelim, Tv_vr, ndelim, rTv_vr, ndelim, Tvr, ndelim, rTvr);
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          break;
 
@@ -1838,18 +1914,18 @@ void ProcessStarData(StarData *d, unsigned short fc)
             //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             //Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             //Rs = Vs - (Vc-Rc) - Tvr* ((vs-rs)-(vc-rc));
-            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
-            Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1);
-            Rs = fTxy(v, r, Tvr, rTvr, 2);
+            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
+            Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
+            Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11);
-            rRs = fTxy(v, r, Tvr, rTvr, 12);
+            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
+            rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1865,18 +1941,18 @@ void ProcessStarData(StarData *d, unsigned short fc)
             //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             //Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
             //Rs = Vs - (Vc-Rc) - Tvr* ((vs-rs)-(vc-rc));
-            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
-            Vs = fTxy(b, v, Tbv, rTbv, 2);
-            Rs = fTxy(v, r, Tvr, rTvr, 2);
+            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
+            Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc);
+            Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTxy(b, v, Tbv, rTbv, 12);
-            rRs = fTxy(v, r, Tvr, rTvr, 12);
+            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
+            rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1892,18 +1968,18 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = fTxy(b, v, Tbv, rTbv, 1);
-            Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1);
-            Rs = fTxy(v, r, Tvr, rTvr, 2);
+            Bs = fTxy(b, v, Tbv, rTbv, 1, Btdesc);
+            Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
+            Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11);
-            rRs = fTxy(v, r, Tvr, rTvr, 12);
-            rBs = fTxy(b, v, Tbv, rTbv, 11);
+            rBs = fTxy(b, v, Tbv, rTbv, 11, Btdesc);
+            rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
+            rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1921,16 +1997,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1);
-            Is = fTxy(v, i, Tvi, rTvi, 2);
+            Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1, Vtdesc);
+            Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11);
-            rIs = fTxy(v, i, Tvi, rTvi, 12);
+            rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11, Vtdesc);
+            rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1944,18 +2020,18 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1); //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
-            Vs = fTxy(b, v, Tbv, rTbv, 2); //Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
-            Is = fTxy(v, i, Tvi, rTvi, 2); //Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
+            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
+            Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc); //Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
+            Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc); //Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTxy(b, v, Tbv, rTbv, 12);
-            rIs = fTxy(v, i, Tvi, rTvi, 12);
+            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
+            rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1971,18 +2047,18 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = fTxy(b, v, Tbv, rTbv, 1);
-            Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1);
-            Is = fTxy(v, i, Tvi, rTvi, 2);
+            Bs = fTxy(b, v, Tbv, rTbv, 1, Btdesc);
+            Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1, Vtdesc);
+            Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11);
-            rIs = fTxy(v, i, Tvi, rTvi, 12);
-            rBs = fTxy(b, v, Tbv, rTbv, 11);
+            rBs = fTxy(b, v, Tbv, rTbv, 11, Btdesc);
+            rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11, Vtdesc);
+            rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -1995,18 +2071,18 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
-            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
+            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
+            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
-            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11);
+            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
+            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -2020,11 +2096,11 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Us= us, Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oUs= Us, oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Us = fTx_yz( u, u, b, Tu_ub, rTu_ub, 1); //us + (Uc-uc) + Tu_ub * ((Us-Bs)-(Uc-Bc));
-            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
-            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
-            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
+            Us = fTx_yz( u, u, b, Tu_ub, rTu_ub, 1, Utdesc); //us + (Uc-uc) + Tu_ub * ((Us-Bs)-(Uc-Bc));
+            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
+            Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1, Rtdesc); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
+            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
@@ -2032,11 +2108,11 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roUs= rUs, roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rUs = fTx_yz( u, u, b, Tu_ub, rTu_ub, 11);
-            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
-            rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11);
-            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11);
+            rUs = fTx_yz( u, u, b, Tu_ub, rTu_ub, 11, Utdesc);
+            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
+            rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
+            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -2050,10 +2126,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Us= us, Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oUs= Us, oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Us = fTx_yz( u, u, b, Tu_ub, rTu_ub, 1); //us + (Uc-uc) + Tu_ub * ((Us-Bs)-(Uc-Bc));
-            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
-            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
+            Us = fTx_yz( u, u, b, Tu_ub, rTu_ub, 1, Utdesc); //us + (Uc-uc) + Tu_ub * ((Us-Bs)-(Uc-Bc));
+            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
+            Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
@@ -2061,10 +2137,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roUs= rUs, roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rUs = fTx_yz( u, u, b, Tu_ub, rTu_ub, 11);
-            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
-            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11);
+            rUs = fTx_yz( u, u, b, Tu_ub, rTu_ub, 11, Utdesc);
+            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
+            rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -2078,9 +2154,9 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Us= us, Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oUs= Us, oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Us = fTx_yz( u, u, b, Tu_ub, rTu_ub, 1); //us + (Uc-uc) + Tu_ub * ((Us-Bs)-(Uc-Bc));
-            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
-            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
+            Us = fTx_yz( u, u, b, Tu_ub, rTu_ub, 1, Utdesc); //us + (Uc-uc) + Tu_ub * ((Us-Bs)-(Uc-Bc));
+            Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001);
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
@@ -2088,9 +2164,9 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roUs= rUs, roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rUs = fTx_yz( u, u, b, Tu_ub, rTu_ub, 11);
-            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
+            rUs = fTx_yz( u, u, b, Tu_ub, rTu_ub, 11, Utdesc);
+            rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001);
          break;
@@ -2104,11 +2180,11 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Us= us, Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oUs= Us, oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Us = fTxy( u, b, Tub, rTub, 1);
-            Bs = fTxy( b, v, Tbv, rTbv, 1);
-            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1);
-            Rs = fTxy( v, r, Tvr, rTvr, 2);
-            Is = fTxy( r, i, Tri, rTri, 2);
+            Us = fTxy( u, b, Tub, rTub, 1, Utdesc);
+            Bs = fTxy( b, v, Tbv, rTbv, 1, Btdesc);
+            Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
+            Rs = fTxy( v, r, Tvr, rTvr, 2, Rtdesc);
+            Is = fTxy( r, i, Tri, rTri, 2, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
@@ -2116,11 +2192,11 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roUs= rUs, roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rUs = fTxy( u, b, Tub, rTub, 11);
-            rBs = fTxy( b, v, Tbv, rTbv, 11);
-            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11);
-            rRs = fTxy( v, r, Tvr, rTvr, 12);
-            rIs = fTxy( r, i, Tri, rTri, 12);
+            rUs = fTxy( u, b, Tub, rTub, 11, Utdesc);
+            rBs = fTxy( b, v, Tbv, rTbv, 11, Btdesc);
+            rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
+            rRs = fTxy( v, r, Tvr, rTvr, 12, Rtdesc);
+            rIs = fTxy( r, i, Tri, rTri, 12, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -2134,10 +2210,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Us= us, Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oUs= Us, oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Us = fTxy(u, b, Tub, rTub, 1);
-            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1); //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
-            Vs = fTxy(b, v, Tbv, rTbv, 2); //Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
-            Is = fTxy(v, i, Tvi, rTvi, 2); //Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
+            Us = fTxy(u, b, Tub, rTub, 1, Utdesc);
+            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
+            Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc); //Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
+            Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc); //Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
@@ -2145,10 +2221,10 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roUs= rUs, roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rUs = fTxy(u, b, Tub, rTub, 11);
-            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTxy(b, v, Tbv, rTbv, 12);
-            rIs = fTxy(v, i, Tvi, rTvi, 12);
+            rUs = fTxy(u, b, Tub, rTub, 11, Utdesc);
+            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
+            rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
@@ -2162,9 +2238,9 @@ void ProcessStarData(StarData *d, unsigned short fc)
          Us= us, Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
             oUs= Us, oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
-            Us = fTxy(u, b, Tub, rTub, 1);
-            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1);
-            Vs = fTxy(b, v, Tbv, rTbv, 2);
+            Us = fTxy(u, b, Tub, rTub, 1, Utdesc);
+            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
+            Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001);
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
@@ -2172,9 +2248,9 @@ void ProcessStarData(StarData *d, unsigned short fc)
          rUs= rus, rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
             roUs= rUs, roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
-            rUs = fTxy(u, b, Tub, rTub, 11);
-            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11);
-            rVs = fTxy(b, v, Tbv, rTbv, 12);
+            rUs = fTxy(u, b, Tub, rTub, 11, Utdesc);
+            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
             if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001);
          break;
@@ -2195,11 +2271,11 @@ void ProcessStarData(StarData *d, unsigned short fc)
 
    if(d->TRANS) {
       switch(d->filter) {
-         case FILT_Ui: d->VMAGt= Us; d->VERRt= rUs; break;
-         case FILT_Bi: d->VMAGt= Bs; d->VERRt= rBs; break;
-         case FILT_Vi: d->VMAGt= Vs; d->VERRt= rVs; break;
-         case FILT_Ri: d->VMAGt= Rs; d->VERRt= rRs; break;
-         case FILT_Ii: d->VMAGt= Is; d->VERRt= rIs; break;
+         case FILT_Ui: d->VMAGt= Us; d->VERRt= rUs; d->NOTES+= Utdesc; break;
+         case FILT_Bi: d->VMAGt= Bs; d->VERRt= rBs; d->NOTES+= Btdesc; break;
+         case FILT_Vi: d->VMAGt= Vs; d->VERRt= rVs; d->NOTES+= Vtdesc; break;
+         case FILT_Ri: d->VMAGt= Rs; d->VERRt= rRs; d->NOTES+= Rtdesc; break;
+         case FILT_Ii: d->VMAGt= Is; d->VERRt= rIs; d->NOTES+= Itdesc; break;
       }
    }
    d->processed= true;
@@ -2555,12 +2631,12 @@ void __fastcall TForm1::Button4Click(TObject *Sender)
 
 
 
-float fTxy (char x, char y, float Txy, float rTxy, int mode) {
+float fTxy (char x, char y, float Txy, float rTxy, int mode, char* tdesc) {
      // Secondary or Color form:  Txy
      //  1/slope of (x-y) vs (X-Y) :
      //    Txy= ((Xs-Ys)-(Xc-Yc)) / ((xs-ys)-(xc-yc))
     float Xs, xs, Xc, xc, Ys, ys, Yc, yc, r, s, rXs, rxs, rXc, rxc, rYs, rys, rYc, ryc, a, ra2, b, rb2;
-
+    sprintf(tdesc, "%cT%c%c=%.4f%cT%c%cErr=%.4f", ndelim, x, y, Txy, ndelim, x, y, rTxy);
     switch(x) {
        case 'u': Xs= Us; xs= us; Xc= Uc; xc= uc;  rXs= rUs; rxs= rus; rXc= rUc; rxc= ruc; break;
        case 'b': Xs= Bs; xs= bs; Xc= Bc; xc= bc;  rXs= rBs; rxs= rbs; rXc= rBc; rxc= rbc; break;
@@ -2575,7 +2651,8 @@ float fTxy (char x, char y, float Txy, float rTxy, int mode) {
        case 'r': Ys= Rs; ys= rs; Yc= Rc; yc= rc;  rYs= rRs; rys= rrs; rYc= rRc; ryc= rrc; break;
        case 'i': Ys= Is; ys= is; Yc= Ic; yc= ic;  rYs= rIs; rys= ris; rYc= rIc; ryc= ric; break;
     }
-
+    // zero the comp ref error; comp reference errors excluded from final error
+    rXc= rYc= 0;
     switch(mode) {
        case 1: r= Xs=  Ys + (Xc-Yc) +  Txy * ((xs-ys)-(xc-yc));   break;
        case 2: r= Ys=  Xs - (Xc-Yc) -  Txy * ((xs-ys)-(xc-yc));   break;
@@ -2610,12 +2687,13 @@ char * fTx_yzFmt(char x, char y, char z, int mode, char* s) {
     return s;
 
 }
-float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode) {
+float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode, char *tdesc) {
     //Primary or star form:  Tx_yz
     //  slope of (X-x) vs (Y-Z) :
     //  Tx_yz= ((Xs-xs)-(Xc-xc)) / ((Ys-Zs)-(Yc-Zc))
     float Xs, xs, Xc, xc, Ys, ys, Yc, yc, Zs, zs, Zc, zc, r, s;
     float rXs, rxs, rXc, rxc, rYs, rys, rYc, ryc, rZs, rzs, rZc, rzc;
+    sprintf(tdesc, "%cT%c_%c%c=%.4f%cT%c_%c%cErr=%.4f", ndelim, x, y, z, Tx_yz, ndelim, x, y, z, rTx_yz);
 
     switch(x) {
        case 'u': Xs= Us; xs= us; Xc= Uc; xc= uc;  rXs= rUs; rxs= rus; rXc= rUc; rxc= ruc; break;
@@ -2639,20 +2717,26 @@ float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode) {
        case 'i': Zs= Is;  Zc= Ic;  rZs= rIs;  rZc= rIc; break;
     }
 
+    // zero the comp ref error; comp reference errors excluded from final error
+    rXc= rYc= rZc= 0;
     switch(mode) {
       case 1: r= Xs= xs + (Xc-xc) + Tx_yz * ((Ys-Zs)-(Yc-Zc));  break;
       case 2: r= Ys= Zs - (Yc-Zc) + ((Xs-xs)-(Xc-xc)) / Tx_yz;  break;
       case 3: r= Zs= Ys + (Yc-Zc) + ((Xs-xs)-(Xc-xc)) / Tx_yz;  break;
 
-      case 11: s= ((Ys-Zs)-(Yc-Zc));
+      case 11:
+
+         s= ((Ys-Zs)-(Yc-Zc));
          if(s==0) r= rXs= 0;
          else r= rXs= sqrt((pow(rxs,2)+pow(rXc,2)+pow(rxc,2)) + pow(Tx_yz*s,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rYs,2)+pow(rZs,2)+pow(rYc,2)+pow(rZc,2))/pow(s,2)));
          break;
-      case 12: s= ((Xs-xs)-(Xc-xc));
+      case 12:
+         s= ((Xs-xs)-(Xc-xc));
          if(s==0) r= rYs= 0;
          else r= rYs= sqrt((pow(rZs,2)+pow(rYc,2)+pow(rZc,2)) + pow(s/Tx_yz,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
          break;
-      case 13: s= ((Xs-xs)-(Xc-xc));
+      case 13:
+         s= ((Xs-xs)-(Xc-xc));
          if(s==0) r= rYs= 0;
          else r= rYs= sqrt((pow(rYs,2)+pow(rYc,2)+pow(rZc,2)) + pow(s/Tx_yz,2)*(pow(rTx_yz/Tx_yz, 2) + (pow(rXs,2)+pow(rxs,2)+pow(rXc,2)+pow(rxc,2))/pow(s,2)));
          break;
@@ -2739,6 +2823,22 @@ void __fastcall TForm1::CopyReportButtonClick(TObject *Sender)
 {
       Memo4->SelectAll();
       Memo4->CopyToClipboard();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::AnalysisTabSheetEnter(TObject *Sender)
+{
+   // prep menu
+
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::versionLabelClick(TObject *Sender)
+{
+    if(versionLabel->Tag) {
+       ShellExecute(Handle,"open", "https://drive.google.com/file/d/0B8twDwcGOO6cSS00V0Z3WFR6dGs/view?usp=sharing",0,0,SW_SHOW);
+//       ShellExecute(Handle,"open", "http://www.gasilvis.com/SID/SidDataGrabber.exe",0,0,SW_SHOW);
+    }
 }
 //---------------------------------------------------------------------------
 

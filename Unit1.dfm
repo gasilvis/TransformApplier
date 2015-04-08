@@ -1,5 +1,5 @@
 object Form1: TForm1
-  Left = 192
+  Left = 171
   Top = 29
   Width = 1141
   Height = 839
@@ -30,20 +30,27 @@ object Form1: TForm1
     object TabSheet1: TTabSheet
       Caption = 'Application'
       object Label6: TLabel
-        Left = 336
+        Left = 280
         Top = 8
         Width = 419
         Height = 21
         Caption = 'Paste your un-transformed AAVSO records here'
       end
       object Label7: TLabel
-        Left = 328
+        Left = 280
         Top = 336
         Width = 575
         Height = 21
         Caption = 
           'The transformed records are here after you hit the Process butto' +
           'n'
+      end
+      object versionLabel: TLabel
+        Left = 752
+        Top = 8
+        Width = 5
+        Height = 21
+        OnClick = versionLabelClick
       end
       object Memo2: TMemo
         Left = 152
@@ -146,7 +153,7 @@ object Form1: TForm1
         Visible = False
       end
       object Button4: TButton
-        Left = 208
+        Left = 176
         Top = 8
         Width = 75
         Height = 25
@@ -1251,9 +1258,11 @@ object Form1: TForm1
             'before the first line that that refers to that comp that looks l' +
             'ike:'
           
-            '"#CREFMAG= <Cmag> <Cerr> <Kmag> <Kerr>". Note that you must incl' +
-            'ude the Comp star and Check'
-          'star data.'
+            '"#CREFMAG= <Cmag> <Cerr> <Kmag> <Kerr>". Note that you can inclu' +
+            'de the Check star data too. If '
+          
+            'you only need to provide the check star, you can use "#KREFMAG= ' +
+            '<Kmag> <Kerr>"'
           ''
           '- Transform coefficients: a notation note'
           'Txy is a coefficient (called color or secondary) of the form:'
@@ -1320,12 +1329,7 @@ object Form1: TForm1
           'needed. This reduces the value of the result.'
           ''
           
-            '- There are checkboxes in front of the coefficients; ignore them' +
-            '. Coefficients are selected as'
-          'described above.'
-          ''
-          
-            '- Coefficient error values. Yes, you should submit the errors re' +
+            '- Coefficient error values: Yes, you should submit the errors re' +
             'lated to your coefficients. The'
           
             'TA will propagate them into the final error of the observation. ' +
@@ -1334,9 +1338,23 @@ object Form1: TForm1
             'spreadsheet and the LINEST function, extract the error with (eg)' +
             ' =INDEX(LINEST'
           
-            '(b_v,Bref_Vref,1,1),2,1) that is, the se,  standard error, of th' +
-            'e slope estimate.'
+            '(b_v,Bref_Vref,1,1),2,1) that is, the se, standard error, of the' +
+            ' slope estimate.'
           'PTGP provides this error value for you.'
+          ''
+          
+            '- Error computations: TA will compute a revised observation erro' +
+            'r based on the VERR you '
+          
+            'submitted (which should be the instrumental errors of star and c' +
+            'omp combined in quadrature)'
+          
+            'and the error of the transform coefficient. Note that the error ' +
+            'of the comp reference '
+          
+            'magnitude is not included in the final error. This conforms to t' +
+            'he WebObs/AID standard '
+          'for reporting errors.'
           ''
           
             '- TA stores your constants in the transformer.ini file alongside' +
@@ -1353,7 +1371,7 @@ object Form1: TForm1
           'that you accessed.'
           ''
           
-            '- Extinction. Extinction is important, but this formulation of t' +
+            '- Extinction: Extinction is important, but this formulation of t' +
             'he transform process cancels out'
           
             'extinction because it assumes the target and comp star are at th' +
@@ -1367,7 +1385,7 @@ object Form1: TForm1
           'different from the target.'
           ''
           
-            '- Aggregating your data. If you have multiple observations of a ' +
+            '- Aggregating your data: If you have multiple observations of a ' +
             'variable star that is'
           
             'varying 100 times slower than the time span of your observations' +
@@ -1386,28 +1404,29 @@ object Form1: TForm1
             ' Boxter program.'
           ''
           
-            '- Grouping. You should assign your observations into transform g' +
+            '- Grouping: You should assign your observations into transform g' +
             'roups. If you do not, TA will'
           
             'attempt to group them for you. You should review the output to m' +
             'ake sure they were grouped in a'
           'reasonable fashion.'
           ''
-          '- Use Std Field check box'
           
-            '  If your chartid was generated with the "Would you like a Stand' +
-            'ard Field Chart", then check'
+            '- Use of the Std Field check box: If your chartid was generated ' +
+            'with the "Would you like a '
           
-            'this box so TA will know how to fetch that data. This is issue w' +
-            'ith VSP where the chartid is'
-          'not uniquely defining the chart.'
+            'Standard Field Chart", then check this box so TA will know how t' +
+            'o fetch that data. This is '
+          
+            'an issue with VSP where the chartid is not uniquely defining the' +
+            ' chart.'
           ''
           
-            '- Test TC checkbox. This is an experimental facility. How good a' +
-            're your transforms? In'
+            '- Test TC checkbox: This is an reality check tool. How good are ' +
+            'your transforms? In'
           
             'theory you should be able to observe a known star and be able to' +
-            ' reproduce its standardized'
+            ' reproduce its published'
           
             'magnitude. This test will move your K star data into the V posit' +
             'ion and then when you'
@@ -1420,16 +1439,18 @@ object Form1: TForm1
           
             'there is a systematic deviation, you should check your observati' +
             'on and assumptions'
-          'because your system is not able to match standard data.'
+          
+            'because your system plus coefficients is not able to match stand' +
+            'ard data.'
           ''
           ''
           
             '- If you have problems or issues or questions with or about the ' +
             'TA, you are welcome to contact'
           
-            'the author, George Silvis, at SGEO@gasilvis.net. Later we will u' +
-            'se the AAVSO software'
-          'development forum for these questions.'
+            'the author, George Silvis, at SGEO@gasilvis.net. Or use the AAVS' +
+            'O software development forum '
+          'for these questions.'
           ''
           ''
           ''
@@ -1440,6 +1461,35 @@ object Form1: TForm1
         ReadOnly = True
         ScrollBars = ssVertical
         TabOrder = 0
+      end
+    end
+    object AnalysisTabSheet: TTabSheet
+      ImageIndex = 5
+      OnEnter = AnalysisTabSheetEnter
+      object Panel3: TPanel
+        Left = 0
+        Top = 0
+        Width = 1125
+        Height = 745
+        Align = alClient
+        Alignment = taLeftJustify
+        TabOrder = 0
+        Visible = False
+        object Label18: TLabel
+          Left = 40
+          Top = 80
+          Width = 68
+          Height = 21
+          Caption = 'Label18'
+        end
+        object ListBox1: TListBox
+          Left = 104
+          Top = 24
+          Width = 337
+          Height = 33
+          ItemHeight = 21
+          TabOrder = 0
+        end
       end
     end
   end
@@ -1490,7 +1540,7 @@ object Form1: TForm1
     DesignFormHeight = 839
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 781
-    DesignFormLeft = 192
+    DesignFormLeft = 171
     DesignFormTop = 29
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
