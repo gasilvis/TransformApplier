@@ -151,6 +151,11 @@ __published:	// IDE-managed Components
    TButton *CopyReportButton;
    TPanel *Panel1;
    TPanel *Panel2;
+   TTabSheet *AnalysisTabSheet;
+   TPanel *Panel3;
+   TLabel *Label18;
+   TListBox *ListBox1;
+   TLabel *versionLabel;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -174,6 +179,8 @@ __published:	// IDE-managed Components
    void __fastcall SaveReporttofile1Click(TObject *Sender);
    void __fastcall Button5Click(TObject *Sender);
    void __fastcall CopyReportButtonClick(TObject *Sender);
+   void __fastcall AnalysisTabSheetEnter(TObject *Sender);
+   void __fastcall versionLabelClick(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
