@@ -105,7 +105,9 @@ that you accessed.
 extinction because it assumes the target and comp star are at the same airmass. So, extinction
 is kept turned off. Future versions of TA will be able to adjust your data for extinction. This
 will depend on giving you a mechanism to specify the airmass of the comp star where it is
-different from the target.
+different from the target. At that time you might use these average extinctions:
+sea-level:  B: 0.368, V: 0.214, R: 0.165, I: 0.130
+mountains:  B: 0.263, V: 0.137, R: 0.099, I: 0.053
 
 - Aggregating your data: If you have multiple observations of a variable star that is
 varying 100 times slower than the time span of your observations, then you should aggregate

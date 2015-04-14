@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 171
-  Top = 29
+  Left = 194
+  Top = 147
   Width = 1141
   Height = 839
   HorzScrollBar.Visible = False
@@ -199,6 +199,16 @@ object Form1: TForm1
           'es.'
         Caption = 'Test TC'
         TabOrder = 13
+      end
+      object DSLRcb: TCheckBox
+        Left = 8
+        Top = 272
+        Width = 113
+        Height = 17
+        Hint = 'Check this if this a DSLR report. This will override #OBSTYPE'
+        Caption = 'DSLR'
+        TabOrder = 14
+        OnClick = DSLRcbClick
       end
     end
     object Report: TTabSheet
@@ -1382,7 +1392,11 @@ object Form1: TForm1
           
             'will depend on giving you a mechanism to specify the airmass of ' +
             'the comp star where it is'
-          'different from the target.'
+          
+            'different from the target. At that time you might use these aver' +
+            'age extinctions:'
+          'sea-level:  B: 0.368, V: 0.214, R: 0.165, I: 0.130'
+          'mountains:  B: 0.263, V: 0.137, R: 0.099, I: 0.053'
           ''
           
             '- Aggregating your data: If you have multiple observations of a ' +
@@ -1540,8 +1554,8 @@ object Form1: TForm1
     DesignFormHeight = 839
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 781
-    DesignFormLeft = 171
-    DesignFormTop = 29
+    DesignFormLeft = 194
+    DesignFormTop = 147
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18

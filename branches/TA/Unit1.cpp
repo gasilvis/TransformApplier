@@ -42,9 +42,17 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.33
+#define Version  2.35
 // if you change the version, change it to in  TAlog.php
-/* 2.33
+/*
+   2.35
+  - ensemble notes
+  - pull comments added until WebObs can handle 
+   2.34
+  - DSLR checkbox. Overrides #OBSTYPE
+  - if DSLR, map TG, TB and TR to V, B, R
+
+   2.33
   - version reminder and download
   - delim's clarified
   - #KREFMAG allowed. #CREFMAG can have C or C and K
@@ -257,6 +265,7 @@ void __fastcall TForm1::ReadCoefficients(TObject *Sender)
    setupEdit->Text= ini->ReadString("Setup", "description", "Describe the setup that has the coefficients below");
    setupEdit->Hint= INIfilename;
    applyExtinction->Checked= ini->ReadBool("Extinction", "apply", false);
+   DSLRcb->Checked= ini->ReadBool("Setup", "DSLR", false);
    for(int i= 0; i< NumTCoef; i++) {
       as.sprintf("%-8s %s", TC[i].name, TC[i].coefhint);
       TC[i].coeflab->Caption= as; TC[i].name;
@@ -331,8 +340,7 @@ void __fastcall TForm1::NumericOnExit(TObject *Sender)
    try {
       p->Text= FloatToStr(f= StrToFloat(p->Text));
       // save the value
-      TIniFile *ini;
-      ini = new TIniFile(INIfilename);
+      TIniFile *ini= new TIniFile(INIfilename);
       if('r'== p->Name[1])
          if('T'== p->Name[2])
             ini->WriteFloat("Error", p->Name.SubString(2, p->Name.Pos("Edit")-2), f);
@@ -354,8 +362,7 @@ void __fastcall TForm1::NumericOnExit(TObject *Sender)
 
 void __fastcall TForm1::setupEditExit(TObject *Sender)
 {
-      TIniFile *ini;
-      ini = new TIniFile(INIfilename);
+      TIniFile *ini= new TIniFile(INIfilename);
       ini->WriteString("Setup", "description", setupEdit->Text);
       delete ini;
       ReadCoefficients(Sender); // resets ram data
@@ -363,8 +370,7 @@ void __fastcall TForm1::setupEditExit(TObject *Sender)
 //---------------------------------------------------------------------------
 void __fastcall TForm1::applyExtinctionExit(TObject *Sender)
 {
-      TIniFile *ini;
-      ini = new TIniFile(INIfilename);
+      TIniFile *ini= new TIniFile(INIfilename);
       ini->WriteBool("Extinction", "apply", applyExtinction->Checked);
       delete ini;
       ReadCoefficients(Sender); // resets ram data
@@ -835,7 +841,7 @@ bool FILTC_displayed[FILTC_NUM];
 AnsiString Formula= "";
 short Method_Mask;
 short GroupNum;
-AnsiString ObsCode;
+AnsiString ObsCode, ObsType;
 char delim, ndelim;
 //---------------------------------------------------------------------------
 void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
@@ -845,7 +851,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    int xi, i, j, k, l, m/*, sdi*/, sdii, n, gdi= 0;
    AnsiString s, r, sx, st;
    StarData sdt;
-   ObsCode= "";
+   ObsCode= "", ObsType= "";
    delim= ';';  ndelim= '|'; // defaults
 
    // Extinction turned off
@@ -889,6 +895,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          } else
          if(s.SubString(2, 8)== "OBSCODE=") {
             ObsCode= s.SubString(10, 10).TrimLeft().TrimRight();
+         } else
+         if(s.SubString(2, 8)== "OBSTYPE=") {
+            ObsType= s.SubString(10, 10).TrimLeft().TrimRight();
+            if(ObsType=="DSLR") DSLRcb->Checked= true;
+            else if(DSLRcb->Checked)  // fix it
+               Memo1->Lines->Strings[i]= "#OBSTYPE=DSLR";
          } else
          if(s.SubString(2, 6)== "DELIM=") {
             if(s.SubString(8, 3).LowerCase()=="tab") delim= '\t';
@@ -965,7 +977,10 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          j= s.SubString(k, 20).Pos(delim);
          sd[sdi].FILT= s.SubString(k, j- 1).TrimLeft().TrimRight();
          k+= j;
-
+         // Remap DSLR filters
+         if(DSLRcb->Checked && sd[sdi].FILT=="TG") sd[sdi].FILT= "V";
+         else if(DSLRcb->Checked && sd[sdi].FILT=="TB") sd[sdi].FILT= "B";
+         else if(DSLRcb->Checked && sd[sdi].FILT=="TR") sd[sdi].FILT= "R";
          // do we recognize the filter?
          sd[sdi].filter= -1;
          for(int ii= 0; ii<FILT_NUM; ii++) {
@@ -1252,9 +1267,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          sd[i].VMAG= sd[i].VMAGex;
          sd[i].narr+= st.sprintf("\r\n%cs= %0.3f +/- %0.3f", tolower(FILTname[sd[i].filter]), sd[i].VMAG, sd[i].VERR);
          // update NOTES
-         sd[i].NOTES+= st.sprintf("%cCREFMAG=%.3f%cCREFERR=%.3f", ndelim, sd[i].CREFmag, ndelim, sd[i].CREFerr);
-         sd[i].NOTES+= st.sprintf("%cKREFMAG=%.3f%cKREFERR=%.3f", ndelim, sd[i].KREFmag, ndelim, sd[i].KREFerr);
-         sd[i].NOTES+= st.sprintf("%cVMAGINS=%.3f%cVERR=%.3f", ndelim, sd[i].VMAG, ndelim, sd[i].VERR);
+//dd         sd[i].NOTES+= st.sprintf("%cCREFMAG=%.3f%cCREFERR=%.3f", ndelim, sd[i].CREFmag, ndelim, sd[i].CREFerr);
+//dd         sd[i].NOTES+= st.sprintf("%cKREFMAG=%.3f%cKREFERR=%.3f", ndelim, sd[i].KREFmag, ndelim, sd[i].KREFerr);
+//dd         sd[i].NOTES+= st.sprintf("%cVMAGINS=%.3f%cVERR=%.3f", ndelim, sd[i].VMAG, ndelim, sd[i].VERR);
       }
    }
 
@@ -2341,8 +2356,7 @@ void __fastcall TForm1::Open1Click(TObject *Sender)
       }   
    };
    // Save the directory
-   TIniFile *ini;
-   ini = new TIniFile(INIfilename);
+   TIniFile *ini= new TIniFile(INIfilename);
    ini->WriteString("Setup", "Dir", OpenDialog1->InitialDir);
    delete ini;
 }
@@ -2361,8 +2375,7 @@ void __fastcall TForm1::Saveuntransformedobsfile1Click(TObject *Sender)
    }
    OpenDialog1->InitialDir= SaveDialog1->InitialDir;
    // Save the directory
-   TIniFile *ini;
-   ini = new TIniFile(INIfilename);
+   TIniFile *ini= new TIniFile(INIfilename);
    ini->WriteString("Setup", "Dir", OpenDialog1->InitialDir); // nb same as SaveDialog1
    delete ini;
 }
@@ -2383,8 +2396,7 @@ void __fastcall TForm1::Save1Click(TObject *Sender)
    }
    OpenDialog1->InitialDir= SaveDialog1->InitialDir;
    // Save the directory
-   TIniFile *ini;
-   ini = new TIniFile(INIfilename);
+   TIniFile *ini= new TIniFile(INIfilename);
    ini->WriteString("Setup", "Dir", OpenDialog1->InitialDir);
    delete ini;
 }
@@ -2404,8 +2416,7 @@ void __fastcall TForm1::SaveReporttofile1Click(TObject *Sender)
    OpenDialog1->InitialDir= SaveDialog1->InitialDir;
    /*
    // Save the directory
-   TIniFile *ini;
-   ini = new TIniFile(INIfilename);
+   TIniFile *ini= new TIniFile(INIfilename);
    ini->WriteString("Setup", "Dir", OpenDialog1->InitialDir);
    delete ini;
    */
@@ -2839,6 +2850,14 @@ void __fastcall TForm1::versionLabelClick(TObject *Sender)
        ShellExecute(Handle,"open", "https://drive.google.com/file/d/0B8twDwcGOO6cSS00V0Z3WFR6dGs/view?usp=sharing",0,0,SW_SHOW);
 //       ShellExecute(Handle,"open", "http://www.gasilvis.com/SID/SidDataGrabber.exe",0,0,SW_SHOW);
     }
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::DSLRcbClick(TObject *Sender)
+{
+      TIniFile *ini= new TIniFile(INIfilename);
+      ini->WriteBool("Setup", "DSLR", DSLRcb->Checked);
+      delete ini;
 }
 //---------------------------------------------------------------------------
 
