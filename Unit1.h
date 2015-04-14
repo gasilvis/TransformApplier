@@ -156,6 +156,7 @@ __published:	// IDE-managed Components
    TLabel *Label18;
    TListBox *ListBox1;
    TLabel *versionLabel;
+   TCheckBox *DSLRcb;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -181,6 +182,7 @@ __published:	// IDE-managed Components
    void __fastcall CopyReportButtonClick(TObject *Sender);
    void __fastcall AnalysisTabSheetEnter(TObject *Sender);
    void __fastcall versionLabelClick(TObject *Sender);
+   void __fastcall DSLRcbClick(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
