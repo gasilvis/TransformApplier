@@ -19,6 +19,7 @@
 
 #include <vcl.h>
 #pragma hdrstop
+                       #include "tinyxml2.h"
 
 #include "Unit1.h"
 #include <IniFiles.hpp>
@@ -32,6 +33,8 @@
 #pragma link "AdWnPort"
 #pragma link "OoMisc"
 #pragma link "HttpProt"
+#pragma link "LibXmlComps"
+#pragma link "LibXmlParser"
 #pragma resource "*.dfm"
 TForm1 *Form1;
 //---------------------------------------------------------------------------
@@ -42,12 +45,14 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.35
+#define Version  2.36
 // if you change the version, change it to in  TAlog.php
 /*
+   2.36
+  - tidy up httpGet routine
    2.35
   - ensemble notes
-  - pull comments added until WebObs can handle 
+  - pull comments added until WebObs can handle
    2.34
   - DSLR checkbox. Overrides #OBSTYPE
   - if DSLR, map TG, TB and TR to V, B, R
@@ -59,11 +64,10 @@ __fastcall TForm1::TForm1(TComponent* Owner)
   - Comp Ref error excluded from final error computation
   - comment field stuffed with support information including TA version
   - Help updated
-  - 
+  -
 */
-   // help note on ensemble
-   // coefficients page: can't check boxes, group extinction stuff
-bool DEBUG= false;
+
+bool Debug= false; // turn of debug msgs
 
 /* adding a coefficient:
    1. add variable
@@ -179,40 +183,22 @@ Coef EC[]= { // matches filter enum  eg FILT_Bi
 
 void __fastcall TForm1::FormCreate(TObject *Sender)
 {
-   TStream *DataIn;
-   char cp[10000];
-   float cver;
    AnsiString s;
+   char cp[1000];
+   float cver;
 
    Form1->Caption= "TA, the AAVSO Transform Applier application, "+ FormatFloat("version 0.00", Version);
 
-   HttpCli1->URL        = "http://www.gasilvis.com/TA/TAlog.php"; // returns currentVersion
-   HttpCli1->RcvdStream = NULL;
-   try {
-      HttpCli1->Get();
-      //Form1->Memo4->Lines->Add("StatusCode = " + IntToStr(Form1->HttpCli1->StatusCode));
-      //for (I = 0; I < Form1->HttpCli1->RcvdHeader->Count; I++)
-      //   Form1->Memo4->Lines->Add("hdr>" + Form1->HttpCli1->RcvdHeader->Strings[I]);
-      DataIn = new TFileStream(Form1->HttpCli1->DocName, fmOpenRead);
-      //Memo4->Lines->LoadFromStream(DataIn);
-      DataIn->ReadBuffer(cp, min(10000, DataIn->Size));
-      delete DataIn;
+   if(httpGet("http://www.gasilvis.com/TA/TAlog.php", cp, sizeof(cp))) {
       sscanf(cp, "%f", &cver);
       if(cver > Version) {
          versionLabel->Tag= 1;
          versionLabel->Font->Color= clBlue;
-         versionLabel->Caption= s.sprintf("Click here to download version %s", cp);
+         versionLabel->Caption= s.sprintf("Click here to download version %.2f", cver);
       } else {
-         versionLabel->Caption= s.sprintf("%s is the latest version of TA", cp);
+         versionLabel->Caption= s.sprintf("%.2f is the latest version of TA", cver);
       }
-   } __except (TRUE) {
-      Form1->Memo4->Lines->Add("GET Failed !");
-      Form1->Memo4->Lines->Add("StatusCode   = " + IntToStr(Form1->HttpCli1->StatusCode));
-      Form1->Memo4->Lines->Add("ReasonPhrase = " + Form1->HttpCli1->ReasonPhrase);
-      //return 0;
    }
-
-
 
    //nb  The labels are now checkboxes
    // have to assign here because they don't exist until here
@@ -1599,19 +1585,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
     s+= ","+ Formula; // methodology
     s+= AggregateCB->Checked? ",true": ",false"; // aggregation?
     s+= TestTCCB->Checked? ",true": ",false";    // TestTC?
-
-    HttpCli1->URL        = s;
-    HttpCli1->RcvdStream = NULL;
-    try {
-       Form1->HttpCli1->Get();
-    } __except (TRUE) {
-             Form1->Memo4->Lines->Add(s);
-             Form1->Memo4->Lines->Add("GET Failed !");
-             Form1->Memo4->Lines->Add("StatusCode   = " + IntToStr(Form1->HttpCli1->StatusCode));
-             Form1->Memo4->Lines->Add("ReasonPhrase = " + Form1->HttpCli1->ReasonPhrase);
-             //return 0;
-    }
-
+    httpGet(s, NULL, 0);
 
 }
 //---------------------------------------------------------------------------
@@ -1677,7 +1651,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1, Rtdesc); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -1688,7 +1662,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1710,7 +1684,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
             Rs = Vs - (Vc-Rc) - Tvr* ((vs-rs)-(vc-rc));
             Is = Rs - (Rc-Ic) - Tri* ((rs-is)-(rc-ic));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.3f, %0.3f, %0.3f, %0.3f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -1731,7 +1705,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
             Rs = fTxy( v, r, Tvr, rTvr, 2, Rtdesc);
             Is = fTxy( r, i, Tri, rTri, 2, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BVRI Arne alternate : B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -1742,7 +1716,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTxy( v, r, Tvr, rTvr, 12, Rtdesc);
             rIs = fTxy( r, i, Tri, rTri, 12, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1759,7 +1733,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
             //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             //Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1767,7 +1741,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVs:
@@ -1784,7 +1758,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1792,7 +1766,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1811,7 +1785,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             //Rs = rs + (Rc-rc) + Tr_vr * ((Vs-Rs)-(Vc-Rc));
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
             Rs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 1, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1819,7 +1793,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
             rRs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 11, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_VRs:
@@ -1836,7 +1810,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1844,7 +1818,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1863,7 +1837,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1, Vtdesc);
             Rs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 1, Rtdesc);
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+ " using:  V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1872,7 +1846,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11, Vtdesc);
             rRs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_VRIs:
@@ -1890,7 +1864,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
             Is = fTxy(r, i, Tri, rTri, 2, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using:  V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1899,7 +1873,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
             rIs = fTxy(r, i, Tri, rTri, 12, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_VRIc:
@@ -1932,7 +1906,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
             Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1941,7 +1915,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVRs:
@@ -1959,7 +1933,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1968,7 +1942,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVRc:
@@ -1986,7 +1960,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTxy(b, v, Tbv, rTbv, 1, Btdesc);
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1995,7 +1969,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTxy(b, v, Tbv, rTbv, 11, Btdesc);
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2014,7 +1988,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1, Vtdesc);
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2022,7 +1996,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11, Vtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2038,7 +2012,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc); //Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc); //Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2047,7 +2021,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVIc:
@@ -2065,7 +2039,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTxy(b, v, Tbv, rTbv, 1, Btdesc);
             Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1, Vtdesc);
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2074,7 +2048,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTxy(b, v, Tbv, rTbv, 11, Btdesc);
             rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11, Vtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVIa:
@@ -2089,7 +2063,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2098,7 +2072,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2116,7 +2090,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1, Rtdesc); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -2128,7 +2102,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2145,7 +2119,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -2156,7 +2130,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2172,7 +2146,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Us = fTx_yz( u, u, b, Tu_ub, rTu_ub, 1, Utdesc); //us + (Uc-uc) + Tu_ub * ((Us-Bs)-(Uc-Bc));
             Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001);
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs;
@@ -2182,7 +2156,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rUs = fTx_yz( u, u, b, Tu_ub, rTu_ub, 11, Utdesc);
             rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001);
          break;
 
@@ -2200,7 +2174,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
             Rs = fTxy( v, r, Tvr, rTvr, 2, Rtdesc);
             Is = fTxy( r, i, Tri, rTri, 2, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -2212,7 +2186,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTxy( v, r, Tvr, rTvr, 12, Rtdesc);
             rIs = fTxy( r, i, Tri, rTri, 12, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2229,7 +2203,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc); //Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc); //Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -2240,7 +2214,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2256,7 +2230,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Us = fTxy(u, b, Tub, rTub, 1, Utdesc);
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001);
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs;
@@ -2266,7 +2240,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rUs = fTxy(u, b, Tub, rTub, 11, Utdesc);
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
-            if(DEBUG) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001);
          break;
 
@@ -2502,16 +2476,14 @@ void __fastcall TForm1::Button2Click(TObject *Sender)
 
 }
 //---------------------------------------------------------------------------
-#define cpBufSize 60000
 //int __fastcall TForm1::getCREFMAG(TObject *Sender, StarData* sd)
 int __fastcall getREFMAG(StarData* sd, bool getc)
 {
     int     I, ret;
-    TStream *DataIn;
     char* pch; int j, i;
     char  pchart[45][20];
     int pi[]= {7, 10, 13, 16, 4};  // [FILT_NUM];
-    char cp[cpBufSize];
+    char cp[60000];
     AnsiString as;
 
     ret= checkChart(sd, getc);
@@ -2519,27 +2491,9 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
        return (ret==1)? 1: 0;
     } else { // no. let's get more chart data
        if(sd->CHART.Length()) { // assuming they gave us a chartid
-          AnsiString u= "http://www.aavso.org/cgi-bin/vsp.pl?chartid=";
-          u+= sd->CHART; u+= "&delimited=yes";
+          AnsiString u= "http://www.aavso.org/cgi-bin/vsp.pl?chartid="+ sd->CHART+ "&delimited=yes";
           if(Form1->UseStdField->Checked) u+= "&std_field=on";
-          //HttpCli1->URL        = "http://www.aavso.org/cgi-bin/vsp.pl?chartid=13221ASP&delimited=yes";
-          Form1->HttpCli1->URL        = u;
-          Form1->HttpCli1->RcvdStream = NULL;
-          try {
-             Form1->HttpCli1->Get();
-          } __except (TRUE) {
-             Form1->Memo4->Lines->Add("GET Failed !");
-             Form1->Memo4->Lines->Add("StatusCode   = " + IntToStr(Form1->HttpCli1->StatusCode));
-             Form1->Memo4->Lines->Add("ReasonPhrase = " + Form1->HttpCli1->ReasonPhrase);
-             return 0;
-          }
-          //Form1->Memo4->Lines->Add("StatusCode = " + IntToStr(Form1->HttpCli1->StatusCode));
-          //for (I = 0; I < Form1->HttpCli1->RcvdHeader->Count; I++)
-          //   Form1->Memo4->Lines->Add("hdr>" + Form1->HttpCli1->RcvdHeader->Strings[I]);
-          DataIn = new TFileStream(Form1->HttpCli1->DocName, fmOpenRead);
-          //Memo4->Lines->LoadFromStream(DataIn);
-          DataIn->ReadBuffer(cp, min(cpBufSize, DataIn->Size));
-          delete DataIn;
+          if(!Form1->httpGet(u, cp, sizeof(cp))) return 0;
           if(strstr(cp, "Sorry, we cannot")) {
              sd->ErrorMsg+= " Bad chart reference.";
              return 0;
@@ -2579,51 +2533,85 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
 
 void __fastcall TForm1::Button1Click(TObject *Sender)
 {
-    int     I;
-    TStream *DataIn;
+// xml xperiment http://www.aavso.org/vsx/index.php?view=query.votable&ident=S+Hya in file S_Hya.xml
+//  http://www.destructor.de/xmlparser/doc.htm
+  EasyXmlScanner1->LoadFromFile("S_Hya.xml");
+//  XmlScanner1->Execute();
 
-    HttpCli1->URL        = "http://www.aavso.org/cgi-bin/vsp.pl?chartid=11331ABQ&delimited=yes";
-    HttpCli1->Proxy      = "";//ProxyHostEdit->Text;
-    HttpCli1->ProxyPort  = "";//ProxyPortEdit->Text;
-    HttpCli1->RcvdStream = NULL;
-    try {
-        HttpCli1->Get   ();
-    } __except (TRUE) {
-        Memo4->Lines->Add("GET Failed !");
-        Memo4->Lines->Add("StatusCode   = " + IntToStr(HttpCli1->StatusCode));
-        Memo4->Lines->Add("ReasonPhrase = " + HttpCli1->ReasonPhrase);
-        return;
-    }
 
-    Memo4->Lines->Add("StatusCode = " + IntToStr(HttpCli1->StatusCode));
+  //-- Init the scanning.
+  EasyXmlScanner1->XmlParser->Normalize= true;
+  EasyXmlScanner1->XmlParser->StartScan();
 
-    for (I = 0; I < HttpCli1->RcvdHeader->Count; I++)
-        Memo4->Lines->Add("hdr>" + HttpCli1->RcvdHeader->Strings[I]);
+  //-- Loop thru the file for each item.
+  AnsiString s;
+  int cnt= 0;
+  while (EasyXmlScanner1->XmlParser->Scan()) {
+     if(EasyXmlScanner1->XmlParser->CurPartType == ptStartTag) {
+        if(EasyXmlScanner1->XmlParser->CurName == "TD") {
+           EasyXmlScanner1->XmlParser->Scan(); // pop out content
+           s= "";
+           switch(++cnt) {
+              case  1: s.sprintf("auid=%s", EasyXmlScanner1->XmlParser->CurContent); break;
+              case  4: s.sprintf("coord=%s", EasyXmlScanner1->XmlParser->CurContent); break;
+              case  5: s.sprintf("vartype=%s", EasyXmlScanner1->XmlParser->CurContent); break;
+              case 14: s.sprintf("spectype=%s", EasyXmlScanner1->XmlParser->CurContent); break;
+           }
+           if(s.Length()) Memo5->Lines->Add(s);
+        }
+     }
+  }
+/*
+  while (EasyXmlScanner1->XmlParser->Scan())
+  {
+     s= "";
+     switch (EasyXmlScanner1->XmlParser->CurPartType)
+     {
+        case  ptStartTag :      //-- Got Start tag.
+          s = EasyXmlScanner1->XmlParser->CurName;
+          Memo5->Lines->Add("st: "+ s);
+          for (int i=0; i< EasyXmlScanner1->XmlParser->CurAttr->Count; i++) {
+             //-- Get each individual name-attr value
+             TAttr* node = (TAttr *)(EasyXmlScanner1->XmlParser->CurAttr->Items[i]);
+             AnsiString attrName = node->Name;
+             AnsiString attrVal = node->Value;
+             //-- Add them to the list..
+             s += " [" + attrName + ", " + attrVal + "] ";
+             Memo5->Lines->Add("    "+ s);
+         }
+          break;
 
-    DataIn = new TFileStream(HttpCli1->DocName, fmOpenRead);
-    Memo4->Lines->LoadFromStream(DataIn);
-    delete DataIn;
+        case  ptContent :       //-- Got content.
+          s = EasyXmlScanner1->XmlParser->CurContent;
+          Memo5->Lines->Add("content: "+ s);
+          break;
+
+        case ptEmptyTag:
+          s = EasyXmlScanner1->XmlParser->CurContent;
+          Memo5->Lines->Add("et: "); //+ s);
+          for (int i=0; i< EasyXmlScanner1->XmlParser->CurAttr->Count; i++) {
+             //-- Get each individual name-attr value
+             TAttr* node = (TAttr *)(EasyXmlScanner1->XmlParser->CurAttr->Items[i]);
+             AnsiString attrName = node->Name;
+             AnsiString attrVal = node->Value;
+             //-- Add them to the list..
+             s= " [" + attrName + ", " + attrVal + "] ";
+             Memo5->Lines->Add("    "+ s);
+         }
+          break;
+
+        //-- Add other cases here as required..
+
+        default :
+          break;
+     }
+  }
+*/
+
 
 }
 //---------------------------------------------------------------------------
 
-
-void __fastcall TForm1::HttpCli1DocBegin(TObject *Sender)
-{
-    //Memo4->Lines->Add(HttpCli1->ContentType + " => " + HttpCli1->DocName);
-    //Memo4->Lines->Add("Document = " + HttpCli1->DocName);
-    HttpCli1->RcvdStream = new TFileStream(HttpCli1->DocName, fmCreate);
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::HttpCli1DocEnd(TObject *Sender)
-{
-    if (HttpCli1->RcvdStream) {
-        delete HttpCli1->RcvdStream;
-        HttpCli1->RcvdStream = NULL;
-    }
-}
-//---------------------------------------------------------------------------
 
 
 
@@ -2860,4 +2848,188 @@ void __fastcall TForm1::DSLRcbClick(TObject *Sender)
       delete ini;
 }
 //---------------------------------------------------------------------------
+
+
+
+
+
+
+/* VOTable experiments
+void __fastcall TForm1::EasyXmlScanner1StartTag(TObject *Sender,
+      AnsiString TagName, TAttrList *Attributes)
+{
+  //-- Construct the tag as : <TagName>
+  AnsiString s = "<" + TagName + ">";
+
+  //-- Get the attributes, if any..
+  for (int i=0; i<=(Attributes->Count-1); i++)
+  {
+    //-- Get each individual name-attr value
+    TAttr* node = (TAttr *)(Attributes->Items[i]);
+    AnsiString attrName = node->Name;
+    AnsiString attrVal = node->Value;
+
+    //-- Add them to the list..
+    s += " [" + attrName + ", " + attrVal + "] ";
+  }
+
+  //-- Use s as required.
+  s+= "";
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1Element(TObject *Sender,
+      TElemDef *ElemDef)
+{
+   Memo5->Lines->Add ("OnElement: "+ ElemDef->Name+ ": "+ ElemDef->Definition);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1AttList(TObject *Sender,
+      TElemDef *ElemDef)
+{
+  int i;
+  i= 1;
+
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1CData(TObject *Sender,
+      AnsiString Content)
+{
+    //
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1Content(TObject *Sender,
+      AnsiString Content)
+{
+     //
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1Entity(TObject *Sender,
+      TEntityDef *EntityDef)
+{
+   //
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1EndTag(TObject *Sender,
+      AnsiString TagName)
+{
+   //
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1StartTag(TObject *Sender,
+      AnsiString TagName, TAttrList *Attributes)
+{
+     //-- Construct the tag as : <TagName>
+  AnsiString s = "<" + TagName + ">";
+
+  //-- Get the attributes, if any..
+  for (int i=0; i<=(Attributes->Count-1); i++)
+  {
+    //-- Get each individual name-attr value
+    TAttr* node = (TAttr *)(Attributes->Items[i]);
+    AnsiString attrName = node->Name;
+    AnsiString attrVal = node->Value;
+
+    //-- Add them to the list..
+    s += " [" + attrName + ", " + attrVal + "] ";
+  }
+
+  //-- Use s as required.
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1Comment(TObject *Sender,
+      AnsiString Comment)
+{
+  //
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1EmptyTag(TObject *Sender,
+      AnsiString TagName, TAttrList *Attributes)
+{
+     //-- Construct the tag as : <TagName>
+  AnsiString s = "<" + TagName + ">";
+
+  //-- Get the attributes, if any..
+  for (int i=0; i<=(Attributes->Count-1); i++)
+  {
+    //-- Get each individual name-attr value
+    TAttr* node = (TAttr *)(Attributes->Items[i]);
+    AnsiString attrName = node->Name;
+    AnsiString attrVal = node->Value;
+
+    //-- Add them to the list..
+    s += " [" + attrName + ", " + attrVal + "] ";
+  }
+
+  //-- Use s as required.
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1Notation(TObject *Sender,
+      TNotationDef *NotationDef)
+{
+   //
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::XmlScanner1XmlProlog(TObject *Sender,
+      AnsiString XmlVersion, AnsiString Encoding, bool Standalone)
+{
+   //
+}
+//---------------------------------------------------------------------------
+*/
+
+bool __fastcall TForm1::httpGet(AnsiString URL, char* buffer, int bufsize)
+{
+   TStream *DataIn;
+   // simple encoding: replace ' ' with '+'
+   while(URL.Pos(" ")) URL[URL.Pos(" ")]= '+';
+   HttpCli1->URL        = URL;
+   HttpCli1->RcvdStream = NULL;
+   char altbuffer[100];
+   char* buf;
+   if(buffer==NULL) { // return not expected
+      buf= altbuffer;
+      bufsize= sizeof(buffer);
+   } else { buf= buffer; }
+   try {
+      HttpCli1->Get();
+      DataIn = new TFileStream(Form1->HttpCli1->DocName, fmOpenRead);
+      DataIn->ReadBuffer(buf, min(bufsize, DataIn->Size));
+      delete DataIn;
+      remove(HttpCli1->DocName.c_str());
+      return true;
+   } __except (TRUE) {
+      Form1->Memo4->Lines->Add("GET Failed !");
+      Form1->Memo4->Lines->Add("StatusCode   = " + IntToStr(Form1->HttpCli1->StatusCode));
+      Form1->Memo4->Lines->Add("ReasonPhrase = " + Form1->HttpCli1->ReasonPhrase);
+      return false;
+   }
+}
+
+void __fastcall TForm1::HttpCli1DocBegin(TObject *Sender)
+{
+    //Memo4->Lines->Add(HttpCli1->ContentType + " => " + HttpCli1->DocName);
+    //Memo4->Lines->Add("Document = " + HttpCli1->DocName);
+    HttpCli1->RcvdStream = new TFileStream(HttpCli1->DocName, fmCreate);
+}
+
+void __fastcall TForm1::HttpCli1DocEnd(TObject *Sender)
+{
+    if(HttpCli1->RcvdStream) {
+        delete HttpCli1->RcvdStream;
+        HttpCli1->RcvdStream = NULL;
+    }
+}
+//---------------------------------------------------------------------------
+
 
