@@ -109,6 +109,13 @@ different from the target. At that time you might use these average extinctions:
 sea-level:  B: 0.368, V: 0.214, R: 0.165, I: 0.130
 mountains:  B: 0.263, V: 0.137, R: 0.099, I: 0.053
 
+- Airmass computations: This is a test feature preliminary to providing differential 
+airmasses to the extinction computations. You can see the airmass for V, C and K on the
+extinction tab. To do this you need the Observatory location. Many softwares provide it in 
+the AAVSO formatted output as #OBSLON= and #OBSLAT= records. If your's doesnot you can 
+enter it on the Extinction tab and it will be remembered in your INI file.
+- Star coordinates are gathered from VSP and VSX for the target, comp and check star.
+
 - Aggregating your data: If you have multiple observations of a variable star that is
 varying 100 times slower than the time span of your observations, then you should aggregate
 your data; it will give you better error values. If you are observing a fast variable then

@@ -19,6 +19,8 @@
 #include <NMHttp.hpp>
 #include <Psock.hpp>
 #include <HttpProt.hpp>
+#include "LibXmlComps.hpp"
+#include "LibXmlParser.hpp"
 //---------------------------------------------------------------------------
 class TForm1 : public TForm
 {
@@ -157,6 +159,14 @@ __published:	// IDE-managed Components
    TListBox *ListBox1;
    TLabel *versionLabel;
    TCheckBox *DSLRcb;
+   TEasyXmlScanner *EasyXmlScanner1;
+   TMemo *Memo5;
+   TMemo *Memo6;
+   TGroupBox *GroupBox3;
+   TLabel *Label16;
+   TEdit *ObsLonEdit;
+   TEdit *ObsLatEdit;
+   TLabel *Label21;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);
@@ -183,11 +193,14 @@ __published:	// IDE-managed Components
    void __fastcall AnalysisTabSheetEnter(TObject *Sender);
    void __fastcall versionLabelClick(TObject *Sender);
    void __fastcall DSLRcbClick(TObject *Sender);
+   void __fastcall ObsLonEditExit(TObject *Sender);
+   void __fastcall ObsLatEditExit(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
    __fastcall TForm1(TComponent* Owner);
    void __fastcall TForm1::ReadCoefficients(TObject *Sender);
+   bool __fastcall TForm1::httpGet(AnsiString URL, char* buffer, int bufsize);
 };
 //---------------------------------------------------------------------------
 extern PACKAGE TForm1 *Form1;

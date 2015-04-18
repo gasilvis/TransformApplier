@@ -19,7 +19,6 @@
 
 #include <vcl.h>
 #pragma hdrstop
-                       #include "tinyxml2.h"
 
 #include "Unit1.h"
 #include <IniFiles.hpp>
@@ -50,6 +49,8 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 /*
    2.36
   - tidy up httpGet routine
+  - add airmass computations using VSX for the star
+  - fix bug in output of AMASS= na
    2.35
   - ensemble notes
   - pull comments added until WebObs can handle
@@ -252,6 +253,9 @@ void __fastcall TForm1::ReadCoefficients(TObject *Sender)
    setupEdit->Hint= INIfilename;
    applyExtinction->Checked= ini->ReadBool("Extinction", "apply", false);
    DSLRcb->Checked= ini->ReadBool("Setup", "DSLR", false);
+   ObsLonEdit->Text= ini->ReadString("Setup", "ObsLon", "0");
+   ObsLatEdit->Text= ini->ReadString("Setup", "ObsLat", "0");
+   
    for(int i= 0; i< NumTCoef; i++) {
       as.sprintf("%-8s %s", TC[i].name, TC[i].coefhint);
       TC[i].coeflab->Caption= as; TC[i].name;
@@ -430,13 +434,24 @@ typedef struct StarData { // eg
    AnsiString  GROUPs; // 0
    AnsiString  CHART; // 080415
    AnsiString  NOTES;
+   double      VRA;
+   double      VDec;
+   float       Vairmass;
+   AnsiString  varType;
+   AnsiString  specType;
 
    bool        processed;
    char        filter;// index into filter list
    float       CREFmag; // ref mag of the comparison star
    float       CREFerr;
+   double      CRA;
+   double      CDec;
+   float       Cairmass;
    float       KREFmag;
    float       KREFerr;
+   double      KRA;
+   double      KDec;
+   float       Kairmass;
    unsigned short FILTC; // filter combo the star is mixed with
    AnsiString  StarsUsed;
    AnsiString  ErrorMsg;   // collect comments here to be displayed after the obs is printed
@@ -461,13 +476,28 @@ typedef struct  {
    AnsiString  AUID;
    AnsiString  label;
    sdatas      sdata[FILT_NUM];
+   double      RA;  // radians
+   double      Dec; // radians
 } chartrow;
 #define chartMAX   1000
 chartrow chart[chartMAX];
-int chartnext= 0;
+int chartNext= 0;
 int __fastcall checkChart(StarData* sd, bool getc);
 int __fastcall getREFMAG(StarData* sd, bool getc);
+float __fastcall AirMass(double JD, double RA, double Dec); // Observatory location is global
 
+typedef struct {
+   AnsiString   name;
+   double       RA;
+   double       Dec;
+   AnsiString   varType;
+   AnsiString   specType;
+} targrow;
+#define targMAX  100
+targrow targs[targMAX];
+int targNext= 0;
+int __fastcall checkTargs(StarData* sd);
+int __fastcall getTargInfo(StarData* sd);
 
 
 /* too add a filter combination
@@ -828,6 +858,7 @@ AnsiString Formula= "";
 short Method_Mask;
 short GroupNum;
 AnsiString ObsCode, ObsType;
+double ObsLongitude, ObsLatitude; // in radians
 char delim, ndelim;
 //---------------------------------------------------------------------------
 void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
@@ -839,7 +870,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    StarData sdt;
    ObsCode= "", ObsType= "";
    delim= ';';  ndelim= '|'; // defaults
-
+   Memo6->Lines->Clear();
+   
    // Extinction turned off
    applyExtinction->Checked= false;
 
@@ -878,6 +910,14 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                 ShowMessage("The file must be of #TYPE=EXTENDED");
                 return;
              }
+         } else
+         if(s.SubString(2, 7)== "OBSLON=") {
+            ObsLonEdit->Text= s.SubString(9, 15).TrimLeft().TrimRight();
+            ObsLonEditExit(Sender);
+         } else
+         if(s.SubString(2, 7)== "OBSLAT=") {
+            ObsLatEdit->Text= s.SubString(9, 15).TrimLeft().TrimRight();
+            ObsLatEditExit(Sender);
          } else
          if(s.SubString(2, 8)== "OBSCODE=") {
             ObsCode= s.SubString(10, 10).TrimLeft().TrimRight();
@@ -1075,6 +1115,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   if(sd[sdi].filter==sd[i].filter && !sd[i].processed) { // same filter and not rejected
                      sd[sdi].CREFmag= sd[i].CREFmag;
                      sd[sdi].CREFerr= sd[i].CREFerr;
+                     sd[sdi].CRA= sd[i].CRA;
+                     sd[sdi].CDec= sd[i].CDec;
                      break;
                   }
                }
@@ -1097,6 +1139,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   if(sd[sdi].filter==sd[i].filter && !sd[i].processed) { // same filter and not rejected
                      sd[sdi].KREFmag= sd[i].KREFmag;
                      sd[sdi].KREFerr= sd[i].KREFerr;
+                     sd[sdi].KRA= sd[i].KRA;
+                     sd[sdi].KDec= sd[i].KDec;
                      break;
                   }
                }
@@ -1108,6 +1152,14 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                }
             }
          }
+         // get extra Star info from VSX
+         getTargInfo(&sd[sdi]);
+         // compute airmasses of target, comp and check
+         st.sprintf("date= %f, AMASS= %.4f", sd[sdi].DATE, sd[sdi].AMASS);
+         st+= r.sprintf(", VX= %.4f", sd[sdi].Vairmass= AirMass(sd[sdi].DATE, sd[sdi].VRA, sd[sdi].VDec));
+         st+= r.sprintf(", CX= %.4f", sd[sdi].Cairmass= AirMass(sd[sdi].DATE, sd[sdi].CRA, sd[sdi].CDec));
+         st+= r.sprintf(", KX= %.4f", sd[sdi].Kairmass= AirMass(sd[sdi].DATE, sd[sdi].KRA, sd[sdi].KDec));
+         Memo6->Lines->Add(st);
 
       } // end data line
    } // end loop through input lines
@@ -1147,6 +1199,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                    sdt.CMAGraw+= sd[j].CMAGraw;
                    sdt.KMAGraw+= sd[j].KMAGraw;
                    sdt.AMASS+= sd[j].AMASS;
+                   sdt.Vairmass+= sd[j].Vairmass;
+                   sdt.Cairmass+= sd[j].Cairmass;
+                   sdt.Kairmass+= sd[j].Kairmass;
                    if(sd[j].NOTES!="na") sdt.NOTES+= " "+ sd[j].NOTES; // don't do nanana!
                    // kill j record, falling through as comment
                    sd[j].record= "# aggregated "+ sd[j].record;
@@ -1165,6 +1220,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                sdt.CMAGraw/= n;
                sdt.KMAGraw/= n;
                sdt.AMASS/= n;
+               sdt.Vairmass/= n;
+               sdt.Cairmass/= n;
+               sdt.Kairmass/= n;
                sdt.NOTES+= s.sprintf("%c%i records aggregated", ndelim, n);
                // rewrite .record   todo
                s= sdt.NAME+ delim;
@@ -1481,7 +1539,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             if(sd[j].KNAME=="na") s+="na" , s+= delim;
             else s+= FormatFloat("0.000", sd[j].KMAGraw)+ delim;
 
-            if(sd[j].AMASSna) s+= "na"+ delim;
+            if(sd[j].AMASSna) s+= "na", s+= delim;
             else   s+= FormatFloat("0.0000", sd[j].AMASS)+ delim;
 
             //s+= IntToStr(sd[j].GROUP)+ delim;
@@ -2406,53 +2464,7 @@ void __fastcall TForm1::Exit1Click(TObject *Sender)
 //---------------------------------------------------------------------------
 
 
-//int __fastcall TForm1::checkChart(TObject *Sender, StarData* sd) {
-int __fastcall checkChart(StarData* sd, bool getc) {
-    bool   auid= false, chartExists= false;
-    int  ret= 1, i, labelCnt= 0, labelIndex= 0;
-    AnsiString NAME= getc? sd->CNAME: sd->KNAME;
-    // CNAME an AUID?
-    if(NAME.Length()==11 && NAME[4]=='-' && NAME[8]=='-')
-       auid= true;
-    // look for it in the current chart data
-    for(i= 0; i< min(chartnext, chartMAX); i++) {
-       if(chart[i].chartid == sd->CHART) { // same chart
-          chartExists= true;
-          if(auid) {
-             if(chart[i].AUID == NAME) break;
-          } else { // maybe its a label
-             if(chart[i].label== NAME) labelCnt++, labelIndex= i;
-          }
-       }
-    }
-    // did we find it?
-    if(i != min(chartnext, chartMAX)) { // yes
-       if(getc) {
-          sd->CREFmag= chart[i].sdata[sd->filter].mag;
-          sd->CREFerr= chart[i].sdata[sd->filter].err;
-       } else {
-          sd->KREFmag= chart[i].sdata[sd->filter].mag;
-          sd->KREFerr= chart[i].sdata[sd->filter].err;
-       }
-    } else if(labelCnt == 1) { // found unique label
-       if(getc) {
-          sd->CREFmag= chart[labelIndex].sdata[sd->filter].mag;
-          sd->CREFerr= chart[labelIndex].sdata[sd->filter].err;
-          sd->CNAME= chart[labelIndex].AUID; // replace label with AUID
-       } else {
-          sd->KREFmag= chart[labelIndex].sdata[sd->filter].mag;
-          sd->KREFerr= chart[labelIndex].sdata[sd->filter].err;
-          sd->KNAME= chart[labelIndex].AUID; // replace label with AUID
-       }
-    } else if(labelCnt > 1) {
-       sd->ErrorMsg+= " Duplicate label in chart.";
-       ret= -1;
-    } else if(chartExists) {
-       ret= -1;
-    } else  ret= 0;
-    return ret;
-}
-
+// test code for getREFMAG
 void __fastcall TForm1::Button2Click(TObject *Sender)
 {
    AnsiString s;
@@ -2475,10 +2487,80 @@ void __fastcall TForm1::Button2Click(TObject *Sender)
 
 
 }
+
+
+//int __fastcall TForm1::checkChart(TObject *Sender, StarData* sd) {
+int __fastcall checkChart(StarData* sd, bool getc) {
+    bool   auid= false, chartExists= false;
+    int  ret= 1, i, labelCnt= 0, labelIndex= 0;
+    AnsiString NAME= getc? sd->CNAME: sd->KNAME;
+    // CNAME an AUID?
+    if(NAME.Length()==11 && NAME[4]=='-' && NAME[8]=='-')
+       auid= true;
+    // look for it in the current chart data
+    for(i= 0; i< min(chartNext, chartMAX); i++) {
+       if(chart[i].chartid == sd->CHART) { // same chart
+          chartExists= true;
+          if(auid) {
+             if(chart[i].AUID == NAME) break;
+          } else { // maybe its a label
+             if(chart[i].label== NAME) labelCnt++, labelIndex= i;
+             // don't break here; looking for duplicate labels
+          }
+       }
+    }
+    // did we find it?
+    if(i != min(chartNext, chartMAX)) { // yes
+       if(getc) {
+          sd->CREFmag= chart[i].sdata[sd->filter].mag;
+          sd->CREFerr= chart[i].sdata[sd->filter].err;
+          sd->CRA= chart[i].RA;
+          sd->CDec= chart[i].Dec;
+       } else {
+          sd->KREFmag= chart[i].sdata[sd->filter].mag;
+          sd->KREFerr= chart[i].sdata[sd->filter].err;
+          sd->KRA= chart[i].RA;
+          sd->KDec= chart[i].Dec;
+       }
+    } else if(labelCnt == 1) { // found unique label
+       if(getc) {
+          sd->CREFmag= chart[labelIndex].sdata[sd->filter].mag;
+          sd->CREFerr= chart[labelIndex].sdata[sd->filter].err;
+          sd->CNAME= chart[labelIndex].AUID; // replace label with AUID
+          sd->CRA= chart[labelIndex].RA;
+          sd->CDec= chart[labelIndex].Dec;
+       } else {
+          sd->KREFmag= chart[labelIndex].sdata[sd->filter].mag;
+          sd->KREFerr= chart[labelIndex].sdata[sd->filter].err;
+          sd->KNAME= chart[labelIndex].AUID; // replace label with AUID
+          sd->KRA= chart[labelIndex].RA;
+          sd->KDec= chart[labelIndex].Dec;
+       }
+    } else if(labelCnt > 1) {
+       sd->ErrorMsg+= " Duplicate label in chart.";
+       ret= -1;
+    } else if(chartExists) {
+       ret= -1;
+    } else  ret= 0;
+    return ret;
+}
+
+double __fastcall hhmmss2radians(char *z) {
+   double h, m, s;
+   sscanf(z, "%lf:%lf:%lf", &h, &m, &s);
+   return  0.261799388 * ((s/60.0+ m)/60.0 + h); // 15*pi/180
+}
+
+double __fastcall ddmmss2radians(char* z) {
+   double d, m, s;
+   sscanf(z, "%lf:%lf:%lf", &d, &m, &s);
+   return 0.017453293 * ((s/60.0+ m)/60.0 + d); // pi/180
+}
+
 //---------------------------------------------------------------------------
 //int __fastcall TForm1::getCREFMAG(TObject *Sender, StarData* sd)
 int __fastcall getREFMAG(StarData* sd, bool getc)
-{
+{   // fill in sd C and K info from chart[]
     int     I, ret;
     char* pch; int j, i;
     char  pchart[45][20];
@@ -2493,7 +2575,11 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
        if(sd->CHART.Length()) { // assuming they gave us a chartid
           AnsiString u= "http://www.aavso.org/cgi-bin/vsp.pl?chartid="+ sd->CHART+ "&delimited=yes";
           if(Form1->UseStdField->Checked) u+= "&std_field=on";
-          if(!Form1->httpGet(u, cp, sizeof(cp))) return 0;
+          // eg   http://www.aavso.org/cgi-bin/vsp.pl?chartid=13591Dqq&delimited=yes
+          if(!Form1->httpGet(u, cp, sizeof(cp))) {
+             sd->ErrorMsg+= " failed chart request.";
+             return 0;
+          }
           if(strstr(cp, "Sorry, we cannot")) {
              sd->ErrorMsg+= " Bad chart reference.";
              return 0;
@@ -2505,25 +2591,104 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
              j++;
              if(0== j % 45) {
                 // doc at http://www.aavso.org/get-api-access-variable-star-database
-                chart[chartnext % chartMAX].chartid= AnsiString(pchart[44]).TrimLeft().TrimRight();
-                chart[chartnext % chartMAX].AUID= AnsiString(pchart[0]).TrimLeft().TrimRight();
-                chart[chartnext % chartMAX].label= AnsiString(pchart[3]).TrimLeft().TrimRight();
+                chart[chartNext % chartMAX].chartid= AnsiString(pchart[44]).TrimLeft().TrimRight();
+                chart[chartNext % chartMAX].AUID= AnsiString(pchart[0]).TrimLeft().TrimRight();
+                chart[chartNext % chartMAX].label= AnsiString(pchart[3]).TrimLeft().TrimRight();
                 for(i= 0; i< FILT_NUM; i++) {
                    if(strcmp(" ", pchart[pi[i]]))
-                      sscanf(pchart[pi[i]], " %f", &chart[chartnext % chartMAX].sdata[i].mag);
+                      sscanf(pchart[pi[i]], " %f", &chart[chartNext % chartMAX].sdata[i].mag);
                    if(strcmp(" ", pchart[pi[i]+1]))
-                      sscanf(pchart[pi[i]+1], " %f", &chart[chartnext % chartMAX].sdata[i].err);
+                      sscanf(pchart[pi[i]+1], " %f", &chart[chartNext % chartMAX].sdata[i].err);
                 }
-                chartnext++;
+                chart[chartNext % chartMAX].RA=  hhmmss2radians(pchart[1]);
+                chart[chartNext % chartMAX].Dec= ddmmss2radians(pchart[2]);
+                chartNext++;
              }
           }
-          // so, let's tryagain
+          // so, let's try again
           return (checkChart(sd, getc)== 1)? 1: 0;
        } else {
           sd->ErrorMsg+= " No chartid.";
           return 0;
        }
     }
+}
+
+// get target data from VSX
+int __fastcall checkTargs(StarData* sd)
+{
+    int  ret= 1, i;
+    // look for it in the current target data
+    for(i= 0; i< min(targNext, targMAX); i++) {
+       if(targs[i].name == sd->NAME)
+          break;
+    }
+    // did we find it?
+    if(i != min(targNext, targMAX)) { // yes
+       sd->VRA= targs[i].RA;
+       sd->VDec= targs[i].Dec;
+       sd->varType= targs[i].varType;
+       sd->specType= targs[i].specType;
+    } else
+       ret= 0;
+    return ret;
+}
+
+int __fastcall getTargInfo(StarData* sd)
+{
+    int  ret;
+    char cp[60000];
+    AnsiString s, u;
+    double RA, Dec;
+
+    ret= checkTargs(sd);
+    if(ret==0) { // found?
+       if(sd->NAME.Length()) { // assuming they gave us a NAME
+          u= "http://www.aavso.org/vsx/index.php?view=query.votable&ident="+ sd->NAME;
+          // eg   http://www.aavso.org/vsx/index.php?view=query.votable&ident=SX+Uma
+          if(!Form1->httpGet(u, cp, sizeof(cp))) {
+             sd->ErrorMsg+= " failed VSX request.";
+          } else {
+             Form1->EasyXmlScanner1->LoadFromBuffer(cp);
+             Form1->EasyXmlScanner1->XmlParser->Normalize= true;
+             Form1->EasyXmlScanner1->XmlParser->StartScan();
+             //-- Loop thru the file for each item.
+             int cnt= 0;
+             while (Form1->EasyXmlScanner1->XmlParser->Scan()) {
+                if(Form1->EasyXmlScanner1->XmlParser->CurPartType == ptStartTag) {
+                   if(Form1->EasyXmlScanner1->XmlParser->CurName == "TD") {
+                      Form1->EasyXmlScanner1->XmlParser->Scan(); // pop out content
+                      switch(++cnt) {
+                         case  2: s= Form1->EasyXmlScanner1->XmlParser->CurContent;
+                                  if(sd->NAME.UpperCase() != s.UpperCase()){
+                                     sd->ErrorMsg+= " VSX did not find star: "+ sd->NAME+ "  "+ s;
+                                     return 0;
+                                  }
+                                  break;
+                         case  4: s= Form1->EasyXmlScanner1->XmlParser->CurContent;
+                                  sscanf(s.c_str(), "%lf,%lf", &RA, &Dec);
+                                  sd->VRA= RA/ 57.29577951;
+                                  sd->VDec= Dec/ 57.29577951;
+                                  break;
+                         case  5: sd->varType= Form1->EasyXmlScanner1->XmlParser->CurContent;
+                                  break;
+                         case 14: sd->specType= Form1->EasyXmlScanner1->XmlParser->CurContent;
+                                  // add to targs
+                                  targs[targNext % targMAX].name= sd->NAME;
+                                  targs[targNext % targMAX].RA= sd->VRA;
+                                  targs[targNext % targMAX].Dec= sd->VDec;
+                                  targs[targNext % targMAX].varType= sd->varType;
+                                  targs[targNext % targMAX].specType= sd->specType;
+                                  targNext++;
+                                  break;
+                      }
+                   }
+                }
+             } // end while
+          }
+       }
+    }
+    return ret;
 }
 
 
@@ -2538,7 +2703,7 @@ void __fastcall TForm1::Button1Click(TObject *Sender)
   EasyXmlScanner1->LoadFromFile("S_Hya.xml");
 //  XmlScanner1->Execute();
 
-
+  // This is a really ugly way to extract data from the VOTable xml. sigh.
   //-- Init the scanning.
   EasyXmlScanner1->XmlParser->Normalize= true;
   EasyXmlScanner1->XmlParser->StartScan();
@@ -2561,54 +2726,6 @@ void __fastcall TForm1::Button1Click(TObject *Sender)
         }
      }
   }
-/*
-  while (EasyXmlScanner1->XmlParser->Scan())
-  {
-     s= "";
-     switch (EasyXmlScanner1->XmlParser->CurPartType)
-     {
-        case  ptStartTag :      //-- Got Start tag.
-          s = EasyXmlScanner1->XmlParser->CurName;
-          Memo5->Lines->Add("st: "+ s);
-          for (int i=0; i< EasyXmlScanner1->XmlParser->CurAttr->Count; i++) {
-             //-- Get each individual name-attr value
-             TAttr* node = (TAttr *)(EasyXmlScanner1->XmlParser->CurAttr->Items[i]);
-             AnsiString attrName = node->Name;
-             AnsiString attrVal = node->Value;
-             //-- Add them to the list..
-             s += " [" + attrName + ", " + attrVal + "] ";
-             Memo5->Lines->Add("    "+ s);
-         }
-          break;
-
-        case  ptContent :       //-- Got content.
-          s = EasyXmlScanner1->XmlParser->CurContent;
-          Memo5->Lines->Add("content: "+ s);
-          break;
-
-        case ptEmptyTag:
-          s = EasyXmlScanner1->XmlParser->CurContent;
-          Memo5->Lines->Add("et: "); //+ s);
-          for (int i=0; i< EasyXmlScanner1->XmlParser->CurAttr->Count; i++) {
-             //-- Get each individual name-attr value
-             TAttr* node = (TAttr *)(EasyXmlScanner1->XmlParser->CurAttr->Items[i]);
-             AnsiString attrName = node->Name;
-             AnsiString attrVal = node->Value;
-             //-- Add them to the list..
-             s= " [" + attrName + ", " + attrVal + "] ";
-             Memo5->Lines->Add("    "+ s);
-         }
-          break;
-
-        //-- Add other cases here as required..
-
-        default :
-          break;
-     }
-  }
-*/
-
-
 }
 //---------------------------------------------------------------------------
 
@@ -2754,7 +2871,7 @@ float fTx_yz (char x, char y, char z, float Tx_yz, float rTx_yz, int mode, char 
 void __fastcall TForm1::UseStdFieldClick(TObject *Sender)
 {
     // flush gathered chart data
-    chartnext= 0;
+    chartNext= 0;
 }
 //---------------------------------------------------------------------------
 
@@ -2772,48 +2889,13 @@ void __fastcall TForm1::CheckBox4Click(TObject *Sender)
 
 void __fastcall TForm1::Button5Click(TObject *Sender)
 {
-  FILE *stream;
-  char Line[512];
-  AnsiString s;
+   // test airmass
+   AnsiString s;
+   float X;
 
-  OpenDialog1->Options.Clear();
-  OpenDialog1->Options << ofAllowMultiSelect << ofFileMustExist;
-  OpenDialog1->Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
-  OpenDialog1->FilterIndex = 1; // start the dialog showing all files
-  if (OpenDialog1->Execute())
-  {
-    for (int I = 0; I < OpenDialog1->Files->Count; I ++)
-    {
-      stream = fopen(OpenDialog1->Files->Strings[I].c_str(), "r");
-
-      if (stream)
-      {
-        // read the first line from the file
-        fgets(Line, sizeof(Line), stream);
-        /* if first line is "#TYPE=EXTENDED", scan
-            if first char is not #, capture
-
-        */
-        Memo4->Lines->Append(Line);
-        /*
-        if(Line) { // ie, not null
-           if(Line=="#TYPE=EXTENDED") {
-              do {
-                 fgets(Line, sizeof(Line), stream);
-                 if(Line) {
-
-                 }
+   //X= AirMass(
 
 
-           }
-
-
-        }
-        */
-        fclose(stream);
-      }
-    }
-  }
 
 }
 //---------------------------------------------------------------------------
@@ -2853,141 +2935,7 @@ void __fastcall TForm1::DSLRcbClick(TObject *Sender)
 
 
 
-
-/* VOTable experiments
-void __fastcall TForm1::EasyXmlScanner1StartTag(TObject *Sender,
-      AnsiString TagName, TAttrList *Attributes)
-{
-  //-- Construct the tag as : <TagName>
-  AnsiString s = "<" + TagName + ">";
-
-  //-- Get the attributes, if any..
-  for (int i=0; i<=(Attributes->Count-1); i++)
-  {
-    //-- Get each individual name-attr value
-    TAttr* node = (TAttr *)(Attributes->Items[i]);
-    AnsiString attrName = node->Name;
-    AnsiString attrVal = node->Value;
-
-    //-- Add them to the list..
-    s += " [" + attrName + ", " + attrVal + "] ";
-  }
-
-  //-- Use s as required.
-  s+= "";
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1Element(TObject *Sender,
-      TElemDef *ElemDef)
-{
-   Memo5->Lines->Add ("OnElement: "+ ElemDef->Name+ ": "+ ElemDef->Definition);
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1AttList(TObject *Sender,
-      TElemDef *ElemDef)
-{
-  int i;
-  i= 1;
-
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1CData(TObject *Sender,
-      AnsiString Content)
-{
-    //
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1Content(TObject *Sender,
-      AnsiString Content)
-{
-     //
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1Entity(TObject *Sender,
-      TEntityDef *EntityDef)
-{
-   //
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1EndTag(TObject *Sender,
-      AnsiString TagName)
-{
-   //
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1StartTag(TObject *Sender,
-      AnsiString TagName, TAttrList *Attributes)
-{
-     //-- Construct the tag as : <TagName>
-  AnsiString s = "<" + TagName + ">";
-
-  //-- Get the attributes, if any..
-  for (int i=0; i<=(Attributes->Count-1); i++)
-  {
-    //-- Get each individual name-attr value
-    TAttr* node = (TAttr *)(Attributes->Items[i]);
-    AnsiString attrName = node->Name;
-    AnsiString attrVal = node->Value;
-
-    //-- Add them to the list..
-    s += " [" + attrName + ", " + attrVal + "] ";
-  }
-
-  //-- Use s as required.
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1Comment(TObject *Sender,
-      AnsiString Comment)
-{
-  //
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1EmptyTag(TObject *Sender,
-      AnsiString TagName, TAttrList *Attributes)
-{
-     //-- Construct the tag as : <TagName>
-  AnsiString s = "<" + TagName + ">";
-
-  //-- Get the attributes, if any..
-  for (int i=0; i<=(Attributes->Count-1); i++)
-  {
-    //-- Get each individual name-attr value
-    TAttr* node = (TAttr *)(Attributes->Items[i]);
-    AnsiString attrName = node->Name;
-    AnsiString attrVal = node->Value;
-
-    //-- Add them to the list..
-    s += " [" + attrName + ", " + attrVal + "] ";
-  }
-
-  //-- Use s as required.
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1Notation(TObject *Sender,
-      TNotationDef *NotationDef)
-{
-   //
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::XmlScanner1XmlProlog(TObject *Sender,
-      AnsiString XmlVersion, AnsiString Encoding, bool Standalone)
-{
-   //
-}
-//---------------------------------------------------------------------------
-*/
-
+// http Get stuff
 bool __fastcall TForm1::httpGet(AnsiString URL, char* buffer, int bufsize)
 {
    TStream *DataIn;
@@ -3031,5 +2979,46 @@ void __fastcall TForm1::HttpCli1DocEnd(TObject *Sender)
     }
 }
 //---------------------------------------------------------------------------
+
+
+void __fastcall TForm1::ObsLonEditExit(TObject *Sender)
+{
+   sscanf(ObsLonEdit->Text.c_str(), "%lf", &ObsLongitude);
+   ObsLongitude/= 57.29577951;
+   TIniFile *ini= new TIniFile(INIfilename);
+   ini->WriteString("Setup", "ObsLon", ObsLonEdit->Text);
+   delete ini;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ObsLatEditExit(TObject *Sender)
+{
+   sscanf(ObsLatEdit->Text.c_str(), "%lf", &ObsLatitude);
+   ObsLatitude/= 57.29577951;
+   TIniFile *ini= new TIniFile(INIfilename);
+   ini->WriteString("Setup", "ObsLat", ObsLatEdit->Text);
+   delete ini;
+}
+//---------------------------------------------------------------------------
+
+float __fastcall AirMass(double JD, double RA, double Dec) // Observatory location is global
+{
+   // Air Mass	Constants from Citizen Sky spreadsheet
+   double a=	1.002432000;
+   double b=	0.148386000;
+   double c=	0.009646700;
+   double d=	0.149864000;
+   double e=	0.010296300;
+   double f=	0.000303978;
+   // from https://answers.yahoo.com/question/index?qid=20070830185150AAoNT4i
+   double D = JD - 2451545.0; // reference to 1/1/2000 12:00
+   double GMST= 18.697374558 + 24.06570982441908* D; // hrs
+   GMST*= 0.261799388 ; // hrs to radians
+   double LMST= GMST+ ObsLongitude;
+   double G11= Dec;
+   double G12= LMST- RA;// fmod( LMST- RA, 6.283185307); // HA  not necessary to normalize
+   double G13= sin(ObsLatitude)*sin(G11)+ cos(ObsLatitude)*cos(G11)*cos(G12);
+   return ((a*G13+ b)*G13+ c)/((((G13+ d)*G13)+ e)*G13+ f);
+}
 
 
