@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 194
-  Top = 147
+  Left = 182
+  Top = 128
   Width = 1141
   Height = 839
   HorzScrollBar.Visible = False
@@ -989,9 +989,9 @@ object Form1: TForm1
         object Label15: TLabel
           Left = 136
           Top = 32
-          Width = 48
+          Width = 67
           Height = 21
-          Caption = 'value'
+          Caption = 'k'#39' value'
         end
         object rEuEdit: TEdit
           Left = 240
@@ -1175,14 +1175,69 @@ object Form1: TForm1
         end
       end
       object Button5: TButton
-        Left = 544
-        Top = 72
+        Left = 968
+        Top = 184
         Width = 89
         Height = 25
         Caption = 'Button5'
         TabOrder = 1
         Visible = False
         OnClick = Button5Click
+      end
+      object Memo6: TMemo
+        Left = 112
+        Top = 288
+        Width = 945
+        Height = 345
+        Font.Charset = ANSI_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -17
+        Font.Name = 'Courier New'
+        Font.Style = []
+        ParentFont = False
+        TabOrder = 2
+      end
+      object GroupBox3: TGroupBox
+        Left = 640
+        Top = 40
+        Width = 265
+        Height = 105
+        Caption = 'Observatory Location'
+        TabOrder = 3
+        object Label16: TLabel
+          Left = 16
+          Top = 40
+          Width = 88
+          Height = 21
+          Caption = 'Longitude'
+        end
+        object Label21: TLabel
+          Left = 16
+          Top = 72
+          Width = 71
+          Height = 21
+          Caption = 'Latitude'
+        end
+        object ObsLonEdit: TEdit
+          Left = 120
+          Top = 32
+          Width = 121
+          Height = 29
+          Hint = 'Longitude in degrees, West is negative'
+          TabOrder = 0
+          Text = '0'
+          OnExit = ObsLonEditExit
+        end
+        object ObsLatEdit: TEdit
+          Left = 120
+          Top = 64
+          Width = 121
+          Height = 29
+          Hint = 'Latitude in degrees'
+          TabOrder = 1
+          Text = '0'
+          OnExit = ObsLatEditExit
+        end
       end
     end
     object TabSheet2: TTabSheet
@@ -1399,6 +1454,25 @@ object Form1: TForm1
           'mountains:  B: 0.263, V: 0.137, R: 0.099, I: 0.053'
           ''
           
+            '- Airmass computations: This is a test feature preliminary to pr' +
+            'oviding differential '
+          
+            'airmasses to the extinction computations. You can see the airmas' +
+            's for V, C and K on the'
+          
+            'extinction tab. To do this you need the Observatory location. Ma' +
+            'ny softwares provide it in '
+          
+            'the AAVSO formatted output as #OBSLON= and #OBSLAT= records. If ' +
+            'your'#39's doesnot you can '
+          
+            'enter it on the Extinction tab and it will be remembered in your' +
+            ' INI file.'
+          
+            '- Star coordinates are gathered from VSP and VSX for the target,' +
+            ' comp and check star.'
+          ''
+          
             '- Aggregating your data: If you have multiple observations of a ' +
             'variable star that is'
           
@@ -1481,11 +1555,10 @@ object Form1: TForm1
       ImageIndex = 5
       OnEnter = AnalysisTabSheetEnter
       object Panel3: TPanel
-        Left = 0
-        Top = 0
+        Left = 8
+        Top = 16
         Width = 1125
         Height = 745
-        Align = alClient
         Alignment = taLeftJustify
         TabOrder = 0
         Visible = False
@@ -1503,6 +1576,15 @@ object Form1: TForm1
           Height = 33
           ItemHeight = 21
           TabOrder = 0
+        end
+        object Memo5: TMemo
+          Left = 240
+          Top = 168
+          Width = 793
+          Height = 241
+          Lines.Strings = (
+            'Memo5')
+          TabOrder = 1
         end
       end
     end
@@ -1554,8 +1636,8 @@ object Form1: TForm1
     DesignFormHeight = 839
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 781
-    DesignFormLeft = 194
-    DesignFormTop = 147
+    DesignFormLeft = 182
+    DesignFormTop = 128
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18
@@ -1598,5 +1680,10 @@ object Form1: TForm1
     SocksAuthentication = socksNoAuthentication
     Left = 188
     Top = 574
+  end
+  object EasyXmlScanner1: TEasyXmlScanner
+    Normalize = True
+    Left = 956
+    Top = 552
   end
 end
