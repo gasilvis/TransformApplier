@@ -47,6 +47,8 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 #define Version  2.36
 // if you change the version, change it to in  TAlog.php
 /*
+   2.37
+
    2.36
   - tidy up httpGet routine
   - add airmass computations using VSX for the star
@@ -255,7 +257,7 @@ void __fastcall TForm1::ReadCoefficients(TObject *Sender)
    DSLRcb->Checked= ini->ReadBool("Setup", "DSLR", false);
    ObsLonEdit->Text= ini->ReadString("Setup", "ObsLon", "0");
    ObsLatEdit->Text= ini->ReadString("Setup", "ObsLat", "0");
-   
+
    for(int i= 0; i< NumTCoef; i++) {
       as.sprintf("%-8s %s", TC[i].name, TC[i].coefhint);
       TC[i].coeflab->Caption= as; TC[i].name;
@@ -3020,5 +3022,6 @@ float __fastcall AirMass(double JD, double RA, double Dec) // Observatory locati
    double G13= sin(ObsLatitude)*sin(G11)+ cos(ObsLatitude)*cos(G11)*cos(G12);
    return ((a*G13+ b)*G13+ c)/((((G13+ d)*G13)+ e)*G13+ f);
 }
+
 
 
