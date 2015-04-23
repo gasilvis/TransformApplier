@@ -44,11 +44,11 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.36
+#define Version  2.37
 // if you change the version, change it to in  TAlog.php
 /*
    2.37
-
+  - exe from GitHub
    2.36
   - tidy up httpGet routine
   - add airmass computations using VSX for the star
@@ -195,7 +195,7 @@ void __fastcall TForm1::FormCreate(TObject *Sender)
    if(httpGet("http://www.gasilvis.com/TA/TAlog.php", cp, sizeof(cp))) {
       sscanf(cp, "%f", &cver);
       if(cver > Version) {
-         versionLabel->Tag= 1;
+         //versionLabel->Tag= 1;
          versionLabel->Font->Color= clBlue;
          versionLabel->Caption= s.sprintf("Click here to download version %.2f", cver);
       } else {
@@ -2919,7 +2919,8 @@ void __fastcall TForm1::AnalysisTabSheetEnter(TObject *Sender)
 void __fastcall TForm1::versionLabelClick(TObject *Sender)
 {
     if(versionLabel->Tag) {
-       ShellExecute(Handle,"open", "https://drive.google.com/file/d/0B8twDwcGOO6cSS00V0Z3WFR6dGs/view?usp=sharing",0,0,SW_SHOW);
+       ShellExecute(Handle,"open", "https://github.com/gasilvis/TransformApplier/raw/TA/TransformApplier.exe",0,0,SW_SHOW);
+//       ShellExecute(Handle,"open", "https://drive.google.com/file/d/0B8twDwcGOO6cSS00V0Z3WFR6dGs/view?usp=sharing",0,0,SW_SHOW);
 //       ShellExecute(Handle,"open", "http://www.gasilvis.com/SID/SidDataGrabber.exe",0,0,SW_SHOW);
     }
 }
