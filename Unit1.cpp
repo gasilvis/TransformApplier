@@ -201,7 +201,7 @@ void __fastcall TForm1::FormCreate(TObject *Sender)
    Form1->Caption= "TA, the AAVSO Transform Applier application, "+ FormatFloat("version 0.00", Version);
 
    if(httpGet("http://www.gasilvis.com/TA/TAlog.php", cp, sizeof(cp))) {
-      sscanf(cp, "%f", &cver);
+      sscanf(cp, "%f", &cver); cver= (floor(0.5+ cver*100.0)/100.0); 
       if(cver > Version) {
          //versionLabel->Tag= 1;
          versionLabel->Font->Color= clBlue;
