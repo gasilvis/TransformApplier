@@ -45,10 +45,16 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 //---------------------------------------------------------------------------
 
 #define Version  2.37
-// if you change the version, change it to in  TAlog.php
+// if you change the version, change it too in  TAlog.php
 /*
    2.37
   - exe from GitHub
+  - long comments
+  - add VX, CX, KX to comments
+  - TAlog only once
+  - don't compute airmass if obslat/lon not set
+  - Test TC output: add VMAGinst
+  - if AMASS na, use Vairmass if available
    2.36
   - tidy up httpGet routine
   - add airmass computations using VSX for the star
@@ -184,6 +190,8 @@ Coef EC[]= { // matches filter enum  eg FILT_Bi
 
 #define NumECoef (sizeof(EC)/sizeof(Coef))
 
+bool TAlogCalled= false;
+
 void __fastcall TForm1::FormCreate(TObject *Sender)
 {
    AnsiString s;
@@ -255,8 +263,9 @@ void __fastcall TForm1::ReadCoefficients(TObject *Sender)
    setupEdit->Hint= INIfilename;
    applyExtinction->Checked= ini->ReadBool("Extinction", "apply", false);
    DSLRcb->Checked= ini->ReadBool("Setup", "DSLR", false);
-   ObsLonEdit->Text= ini->ReadString("Setup", "ObsLon", "0");
-   ObsLatEdit->Text= ini->ReadString("Setup", "ObsLat", "0");
+   ObsLonEdit->Text= ini->ReadString("Setup", "ObsLon", "0");  ObsLonEditExit(Sender);
+   ObsLatEdit->Text= ini->ReadString("Setup", "ObsLat", "0");  ObsLatEditExit(Sender);
+
 
    for(int i= 0; i< NumTCoef; i++) {
       as.sprintf("%-8s %s", TC[i].name, TC[i].coefhint);
@@ -1163,6 +1172,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          st+= r.sprintf(", KX= %.4f", sd[sdi].Kairmass= AirMass(sd[sdi].DATE, sd[sdi].KRA, sd[sdi].KDec));
          Memo6->Lines->Add(st);
 
+         // Use Vairmass if avail and AMASS was na
+         if(sd[sdi].AMASSna && sd[sdi].Vairmass!=0) {
+            sd[sdi].AMASS= sd[sdi].Vairmass;
+            sd[sdi].AMASSna= false;
+         }
+
       } // end data line
    } // end loop through input lines
    sdi++; // sdi is the number of obs collected
@@ -1313,9 +1328,10 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          sd[i].VMAG= sd[i].VMAGex;
          sd[i].narr+= st.sprintf("\r\n%cs= %0.3f +/- %0.3f", tolower(FILTname[sd[i].filter]), sd[i].VMAG, sd[i].VERR);
          // update NOTES
-//dd         sd[i].NOTES+= st.sprintf("%cCREFMAG=%.3f%cCREFERR=%.3f", ndelim, sd[i].CREFmag, ndelim, sd[i].CREFerr);
-//dd         sd[i].NOTES+= st.sprintf("%cKREFMAG=%.3f%cKREFERR=%.3f", ndelim, sd[i].KREFmag, ndelim, sd[i].KREFerr);
-//dd         sd[i].NOTES+= st.sprintf("%cVMAGINS=%.3f%cVERR=%.3f", ndelim, sd[i].VMAG, ndelim, sd[i].VERR);
+         sd[i].NOTES+= st.sprintf("%cCREFMAG=%.3f%cCREFERR=%.3f", ndelim, sd[i].CREFmag, ndelim, sd[i].CREFerr);
+         sd[i].NOTES+= st.sprintf("%cKREFMAG=%.3f%cKREFERR=%.3f", ndelim, sd[i].KREFmag, ndelim, sd[i].KREFerr);
+         sd[i].NOTES+= st.sprintf("%cVMAGINS=%.3f%cVERR=%.3f", ndelim, sd[i].VMAG, ndelim, sd[i].VERR);
+         sd[i].NOTES+= st.sprintf("%cVX=%.4f%cCX=%.4f%cKX=%.4f", ndelim, sd[i].Vairmass, ndelim, sd[i].Cairmass, ndelim, sd[i].Kairmass);
       }
    }
 
@@ -1627,10 +1643,10 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
     // TC Test report
     if(TestTCCB->Checked) {
        Memo4->Lines->Add("\r\n    Transform Coefficient Test Report  \r\n");
-       Memo4->Lines->Add("name      filter  VMAGrep  Refmag     diff    error  transformed");
+       Memo4->Lines->Add("name      filter  Refmag  VMAGinst  VMAGrep   diff     error  transformed");
        for(i= 0; i<sdi; i++) {
           if(sd[i].record[1]!='#') { // not aggregated
-             Memo4->Lines->Add(st.sprintf("%11s %3s %8.3f %8.3f %8.3f %8.3f    %3s", sd[i].NAME, sd[i].FILT, sd[i].VMAGrep, sd[i].KREFmag, sd[i].VMAGrep - sd[i].KREFmag, sd[i].VERRt, sd[i].TRANS?"yes":"no"));
+             Memo4->Lines->Add(st.sprintf("%11s %3s %8.3f %8.3f %8.3f %8.3f %8.3f    %3s", sd[i].NAME, sd[i].FILT, sd[i].KREFmag, sd[i].VMAGinst, sd[i].VMAGrep, sd[i].VMAGrep - sd[i].KREFmag, sd[i].VERRt, sd[i].TRANS?"yes":"no"));
           }
        }
        // try to derive coefficients?
@@ -1639,13 +1655,16 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
     }
 
     // log the process
-    s= "http://www.gasilvis.com/TA/TAlog.php?logentry=";
-    s+= ObsCode;
-    s+= ","+ FormatFloat("0.00", Version);
-    s+= ","+ Formula; // methodology
-    s+= AggregateCB->Checked? ",true": ",false"; // aggregation?
-    s+= TestTCCB->Checked? ",true": ",false";    // TestTC?
-    httpGet(s, NULL, 0);
+    if(!TAlogCalled) {
+       s= "http://www.gasilvis.com/TA/TAlog.php?logentry=";
+       s+= ObsCode;
+       s+= ","+ FormatFloat("0.00", Version);
+       s+= ","+ Formula; // methodology
+       s+= AggregateCB->Checked? ",true": ",false"; // aggregation?
+       s+= TestTCCB->Checked? ",true": ",false";    // TestTC?
+       httpGet(s, NULL, 0);
+       TAlogCalled= true;
+    }
 
 }
 //---------------------------------------------------------------------------
@@ -3013,6 +3032,7 @@ float __fastcall AirMass(double JD, double RA, double Dec) // Observatory locati
    double d=	0.149864000;
    double e=	0.010296300;
    double f=	0.000303978;
+   if(ObsLatitude==0 || ObsLongitude==0) return 0;
    // from https://answers.yahoo.com/question/index?qid=20070830185150AAoNT4i
    double D = JD - 2451545.0; // reference to 1/1/2000 12:00
    double GMST= 18.697374558 + 24.06570982441908* D; // hrs
