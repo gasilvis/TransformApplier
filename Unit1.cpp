@@ -36,6 +36,7 @@
 #pragma link "LibXmlParser"
 #pragma resource "*.dfm"
 TForm1 *Form1;
+
 //---------------------------------------------------------------------------
 __fastcall TForm1::TForm1(TComponent* Owner)
    : TForm(Owner)
@@ -44,9 +45,15 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.37
+#define Version  2.38
 // if you change the version, change it too in  TAlog.php
 /*
+   2.38
+   - extinction turned back on and uses computed airmasses
+   - search backwards for CREFMAG, KREFMAG information
+   - capture #BVCOLOR and #VICOLOR information
+   - capture colors for later observations
+   - B V R and I single filter transforms supported
    2.37
   - exe from GitHub
   - long comments
@@ -154,6 +161,7 @@ AnsiString Uts, Bts, Vts, Rts, Its;  // DATEs of the star providing this data
 char Utdesc[200], Btdesc[200], Vtdesc[200], Rtdesc[200], Itdesc[200]; // name and values of the transforms used, ready for NOTES
 
 float* Extinction[]= { &Eb, &Ev, &Er, &Ei, &Eu }; // filter order
+float* ExtinctionErr[]= { &rEb, &rEv, &rEr, &rEi, &rEu }; // filter order
 
 Coef TC[]= {
     {&Tbv,&rTbv,    "Tbv",   "1/slope of (b-v) vs (B-V)"}
@@ -201,7 +209,7 @@ void __fastcall TForm1::FormCreate(TObject *Sender)
    Form1->Caption= "TA, the AAVSO Transform Applier application, "+ FormatFloat("version 0.00", Version);
 
    if(httpGet("http://www.gasilvis.com/TA/TAlog.php", cp, sizeof(cp))) {
-      sscanf(cp, "%f", &cver); cver= (floor(0.5+ cver*100.0)/100.0); 
+      sscanf(cp, "%f", &cver); cver= (floor(0.5+ cver*100.0)/100.0);
       if(cver > Version) {
          //versionLabel->Tag= 1;
          versionLabel->Font->Color= clBlue;
@@ -467,12 +475,17 @@ typedef struct StarData { // eg
    AnsiString  StarsUsed;
    AnsiString  ErrorMsg;   // collect comments here to be displayed after the obs is printed
    bool        ensemble;
+   float       BVcolor;
+   float       BVcolorErr;
+   float       VIcolor;
+   float       VIcolorErr;
+
 } StarData;
 #define sdiMAX   1000
 StarData sd[sdiMAX];
 int sdi;  // count of entries in sd.
 
-void SetStarData(StarData d);
+void SetStarData(StarData *d, int index);
 void ProcessStarData(StarData *d, unsigned short fc);
 
 
@@ -551,6 +564,10 @@ enum { // mask values
    ,FILTC_UBVRIs=  (FILT_Ux|FILT_Bx|FILT_Vx|FILT_Rx|FILT_Ix) | METHOD_Special
    ,FILTC_UBVIs=   (FILT_Ux|FILT_Bx|FILT_Vx|FILT_Ix)         | METHOD_Special
    ,FILTC_UBVs=    (FILT_Ux|FILT_Bx|FILT_Vx)                 | METHOD_Special
+   ,FILTC_Ba=      (FILT_Bx)         | METHOD_AAVSO
+   ,FILTC_Va=      (FILT_Vx)         | METHOD_AAVSO
+   ,FILTC_Ra=      (FILT_Rx)         | METHOD_AAVSO
+   ,FILTC_Ia=      (FILT_Ix)         | METHOD_AAVSO
 
 // add here
 };
@@ -561,6 +578,7 @@ unsigned short FILTC_mask[]= {FILTC_BVRIc, FILTC_BVc, FILTC_VRc, FILTC_VRIc, FIL
                     ,FILTC_BVRIs, FILTC_BVs, FILTC_VRs, FILTC_VRIs, FILTC_BVRs, FILTC_VIs, FILTC_BVIs
                     ,FILTC_BVRIa, FILTC_BVa, FILTC_VRa, FILTC_VRIa, FILTC_BVRa, FILTC_VIa, FILTC_BVIa
                     ,FILTC_UBVRIa ,FILTC_UBVIa ,FILTC_UBVa ,FILTC_UBVRIs ,FILTC_UBVIs ,FILTC_UBVs
+                    ,FILTC_Ba, FILTC_Va, FILTC_Ra, FILTC_Ia
        };
 #define FILTC_NUM (sizeof(FILTC_mask)/2)
 
@@ -860,6 +878,38 @@ AnsiString FILTC_desc[FILTC_NUM][FILTC_desc_rows]= {
     ,NULL
    }
 
+   ,
+   {   // FILTC_Ba
+     "# B, AAVSO single filter transform "
+    ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is obs"
+    ,"#  Bs = bs + (Bc-bc) + Tb_bv * ((BVcolor)-(Bc-Vc))"
+    ,"#  Vs = Bs - BVcolor"
+    ,NULL  ,NULL  ,NULL
+   }
+   ,
+   {   // FILTC_Va
+     "# V, AAVSO single filter transform "
+    ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is obs"
+    ,"#  Vs = vs + (Vc-vc) + Tv_bv * ((BVcolor)-(Bc-Vc))"
+    ,"#  Bs = Vs + BVcolor"
+    ,NULL  ,NULL  ,NULL
+   }
+   ,
+   {   // FILTC_Ra
+     "# R, AAVSO single filter transform "
+    ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is obs"
+    ,"#  Rs = rs + (Rc-rc) + Tr_vi * ((VIcolor)-(Vc-Ic))"
+    ,NULL  ,NULL  ,NULL,  NULL
+   }
+   ,
+   {   // FILTC_Ia
+     "# I, AAVSO single filter transform "
+    ,"#  variable notation: filter/star. Star s is the target, c is the comparison. Capital filter is ref, lower case is obs"
+    ,"#  Is = is + (Ic-ic) + Ti_vi * ((VIcolor)-(Vc-Ic))"
+    ,"#  Vs = Is + VIcolor"
+    ,NULL  ,NULL  ,NULL
+   }
+
 };
 
 
@@ -876,15 +926,16 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 {
    unsigned short fc; // filter combo and index
    float crefmag= -999, x, creferr, krefmag= -999, kreferr;
+   float bvcolor= -999, bvcolorerr, vicolor= -999, vicolorerr;
    int xi, i, j, k, l, m/*, sdi*/, sdii, n, gdi= 0;
    AnsiString s, r, sx, st;
    StarData sdt;
    ObsCode= "", ObsType= "";
    delim= ';';  ndelim= '|'; // defaults
    Memo6->Lines->Clear();
-   
+
    // Extinction turned off
-   applyExtinction->Checked= false;
+//   applyExtinction->Checked= false;
 
    // init
    // reset flags for displaying information in the output. Only want to display
@@ -969,6 +1020,20 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                krefmag= -999; // only crefmag defined
                ShowMessage("Bad #KREFMAG comment: must have value AND error term for K.["+s.SubString(10, s.Length()-9)+"]"  );
             } // else   the krefmag/err will be picked up by the next star record
+         } else
+         if(s.SubString(2, 8)== "BVCOLOR=") {
+            xi= sscanf(s.SubString(10, s.Length()-9).c_str(),"%f %f",  &bvcolor, &bvcolorerr);
+            if(xi!=2) {
+               bvcolor= -999;
+               ShowMessage("Bad #BVCOLOR comment: must have value AND error term for color.["+s.SubString(10, s.Length()-9)+"]"  );
+            }
+         } else
+         if(s.SubString(2, 8)== "VICOLOR=") {
+            xi= sscanf(s.SubString(10, s.Length()-9).c_str(),"%f %f",  &vicolor, &vicolorerr);
+            if(xi!=2) {
+               vicolor= -999;
+               ShowMessage("Bad #VICOLOR comment: must have value AND error term for color.["+s.SubString(10, s.Length()-9)+"]"  );
+            }
          }
 
       } // end comment line
@@ -985,8 +1050,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          sd[sdi].processed= false; // clear the flag
          sd[sdi].ErrorMsg= ""; // clear the msg
          sd[sdi].ensemble= false;
-         sd[sdi].CREFmag= -999;
-         sd[sdi].KREFmag= -999;
+         sd[sdi].CREFmag= sd[sdi].KREFmag= -999;
+         sd[sdi].BVcolor= sd[sdi].VIcolor= -999;
 
          k= 1;
          j= s.Pos(delim);
@@ -1121,7 +1186,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             sd[sdi].CREFerr= creferr;
             crefmag= -999; // don't use again.
          } else {
-            for(int i= 0; i< sdi; i++) { // look in prior star records
+            //for(int i= 0; i< sdi; i++) { // look in prior star records
+            for(int i= sdi- 1; i >= 0; i--) { // look in prior star records
                if(sd[sdi].CNAME==sd[i].CNAME) { // same star
                   if(sd[sdi].filter==sd[i].filter && !sd[i].processed) { // same filter and not rejected
                      sd[sdi].CREFmag= sd[i].CREFmag;
@@ -1145,7 +1211,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             sd[sdi].KREFerr= kreferr;
             krefmag= -999; // don't use again.
          } else {
-            for(int i= 0; i< sdi; i++) { // look in prior star records
+            //for(int i= 0; i< sdi; i++) { // look in prior star records
+            for(int i= sdi- 1; i >= 0; i--) { // look in prior star records
                if(sd[sdi].KNAME==sd[i].KNAME) { // same star
                   if(sd[sdi].filter==sd[i].filter && !sd[i].processed) { // same filter and not rejected
                      sd[sdi].KREFmag= sd[i].KREFmag;
@@ -1178,11 +1245,22 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             sd[sdi].AMASSna= false;
          }
 
+         // look for color information
+         if(bvcolor != -999) { // found in a prior comment
+            sd[sdi].BVcolor= bvcolor;
+            sd[sdi].BVcolorErr= bvcolorerr;
+            bvcolor= -999; // don't use again.
+         } // SetStarData will look for this for other obs
+         if(vicolor != -999) { // found in a prior comment
+            sd[sdi].VIcolor= vicolor;
+            sd[sdi].VIcolorErr= vicolorerr;
+            vicolor= -999; // don't use again.
+         } // SetStarData will look for this for other obs
+
       } // end data line
    } // end loop through input lines
    sdi++; // sdi is the number of obs collected
 
-   // assess extinction
 
    if(AggregateCB->Checked) {
       /*
@@ -1279,6 +1357,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          if(sd[i].processed==false) {
             sd[i].NAME= sd[i].KNAME;
             sd[i].VMAGraw= sd[i].KMAGraw - sd[i].CMAGraw + sd[i].CREFmag;
+            sd[i].Vairmass= sd[i].Kairmass;
+            sd[i].BVcolor= sd[i].VIcolor= -999; // fail the TestTC for single filters
          }
       }
    }
@@ -1305,18 +1385,28 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             sd[i].VMAGinst= sd[i].VMAGraw + sd[i].CMAGraw;
             sd[i].narr+= st.sprintf("\r\nDIF inst mag: Vinst= %0.3f = %0.3f + %0.3f ", sd[i].VMAGinst, sd[i].VMAGraw, sd[i].CMAGraw);
          }
+         sd[i].NOTES+= st.sprintf("%cVMAGINS=%.3f%cVERR=%.3f", ndelim, sd[i].VMAGinst, ndelim, sd[i].VERR);
 
          // apply Extinction correction
-         if(applyExtinction->Checked && sd[i].AMASSna) {
-            applyExtinction->Checked= false;
-            ShowMessage("Obs found with AMASS na; Extinction feature turned off");
-         }
-         if(applyExtinction->Checked) {
-            sd[i].CMAGex= sd[i].CMAGraw - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
-            sd[i].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].CMAGex, sd[i].CMAGraw, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
-            sd[i].VMAGex= sd[i].VMAGinst  - *Extinction[sd[i].filter] * sd[i].AMASS; //      Mobs - K * Airmass
-            //  todo  add extinction error to sd[i].VERR=  (nb. this is v and c error combined)
-            sd[i].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].VMAGex, sd[i].VMAGinst, *Extinction[sd[i].filter], sd[i].AMASS); //      Mobs - K * Airmass
+//         if(applyExtinction->Checked && sd[i].AMASSna) {
+//            applyExtinction->Checked= false;
+//            ShowMessage("Obs found with AMASS na; Extinction feature turned off");
+//         }
+         if(applyExtinction->Checked && sd[i].Vairmass!=0 && sd[i].Cairmass!=0) {
+            sd[i].CMAGex= sd[i].CMAGraw - *Extinction[sd[i].filter] * sd[i].Cairmass; //      Mobs - K * Airmass
+            sd[i].narr+= st.sprintf("\r\nCMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].CMAGex, sd[i].CMAGraw, *Extinction[sd[i].filter], sd[i].Cairmass); //      Mobs - K * Airmass
+            sd[i].VMAGex= sd[i].VMAGinst  - *Extinction[sd[i].filter] * sd[i].Vairmass; //      Mobs - K * Airmass
+            sd[i].narr+= st.sprintf("\r\nVMAG with extinction: %0.3f = %0.3f - %0.3f * %0.4f", sd[i].VMAGex, sd[i].VMAGinst, *Extinction[sd[i].filter], sd[i].Vairmass); //      Mobs - K * Airmass
+            //  add extinction error to sd[i].VERR=  (nb. this is v and c error combined)
+            //   extinc err^2 is (K*(Xv-Xc))^2 * ( (XE/(Xv-Xc))^2 + (KE/K)^2),  XE= 0.0002
+            #define aK  *Extinction[sd[i].filter]
+            #define aKE *ExtinctionErr[sd[i].filter]
+            #define aXv sd[i].Vairmass
+            #define aXc sd[i].Cairmass
+            #define aXE 0.0002
+            if(aXv-aXc) // ie difference in airmass exists
+               sd[i].VERR= sqrt(pow(sd[i].VERR, 2) + pow(aK*(aXv-aXc),2) * ( pow(aXE/(aXv-aXc),2) + pow(aKE/aK,2) ) );
+            sd[i].NOTES+= st.sprintf("%ck1=%.4f%ck1err=%.4f", ndelim, aK, ndelim, aKE);
          } else {
             sd[i].CMAGex= sd[i].CMAGraw;
             sd[i].VMAGex= sd[i].VMAGinst;
@@ -1330,7 +1420,6 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          // update NOTES
          sd[i].NOTES+= st.sprintf("%cCREFMAG=%.3f%cCREFERR=%.3f", ndelim, sd[i].CREFmag, ndelim, sd[i].CREFerr);
          sd[i].NOTES+= st.sprintf("%cKREFMAG=%.3f%cKREFERR=%.3f", ndelim, sd[i].KREFmag, ndelim, sd[i].KREFerr);
-         sd[i].NOTES+= st.sprintf("%cVMAGINS=%.3f%cVERR=%.3f", ndelim, sd[i].VMAG, ndelim, sd[i].VERR);
          sd[i].NOTES+= st.sprintf("%cVX=%.4f%cCX=%.4f%cKX=%.4f", ndelim, sd[i].Vairmass, ndelim, sd[i].Cairmass, ndelim, sd[i].Kairmass);
       }
    }
@@ -1348,7 +1437,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                if(cs==sd[i].NAME+ sd[i].GROUPs && sf[sd[i].filter]== sdiMAX) {
                   // set this star
                   sf[sd[i].filter]= i;
-                  SetStarData(sd[i]);
+                  SetStarData(&sd[i], i);
                }
             } else { // !cs;  new star
                cs= sd[i].NAME+ sd[i].GROUPs; // defined by name and group
@@ -1357,7 +1446,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   sf[j]= sdiMAX;
                // set this star
                sf[sd[i].filter]= i;
-               SetStarData(sd[i]);
+               SetStarData(&sd[i], i);
             }
          }
       }
@@ -1389,7 +1478,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 //   AnsiString as;
          int k, m;
          if((sd[i].NAME+ sd[i].GROUPs)==cs && sd[i].processed==false) {
-            SetStarData(sd[i]);
+            SetStarData(&sd[i], i);
             sf[sd[i].filter]= i; // must provide data for its own filter
 // Form1->Memo2->Lines->Add(as.sprintf("I= %i, fc= %i", i, fc));
 
@@ -1414,6 +1503,22 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   sd[i].narr+= st.sprintf("\r\nStar: %s  Rs= %6.3f, rs= %6.3f, Rc= %6.3f, rc= %6.3f", Rts, Rs, rs, Rc, rc);
                if(fc & FILT_Ix)
                   sd[i].narr+= st.sprintf("\r\nStar: %s  Is= %6.3f, is= %6.3f, Ic= %6.3f, ic= %6.3f", Its, Is, is, Ic, ic);
+               // show color information
+               if(fc == FILTC_Ba || fc == FILTC_Va)
+                  sd[i].narr+= st.sprintf("\r\nBVcolor= %6.3f, error= %6.3f", sd[i].BVcolor, sd[i].BVcolorErr);
+               if(fc == FILTC_Ra || fc == FILTC_Ia)
+                  sd[i].narr+= st.sprintf("\r\nVIcolor= %6.3f, error= %6.3f", sd[i].VIcolor, sd[i].VIcolorErr);
+               // capture color information for later use
+               if(fc & FILT_Bx  &&  fc & FILT_Vx) {
+                  sd[i].BVcolor= Bs - Vs;
+                  sd[i].BVcolorErr= sqrt( pow(rBs, 2) + pow(rVs, 2));
+                  sd[i].narr+= st.sprintf("\r\nBVcolor= %6.3f +/- %6.3f", sd[i].BVcolor, sd[i].BVcolorErr);
+               }
+               if(fc & FILT_Vx  &&  fc & FILT_Ix) {
+                  sd[i].VIcolor= Vs - Is;
+                  sd[i].VIcolorErr= sqrt( pow(rVs, 2) + pow(rIs, 2));
+                  sd[i].narr+= st.sprintf("\r\nVIcolor= %6.3f +/- %6.3f", sd[i].VIcolor, sd[i].VIcolorErr);
+               }
 
                sd[i].VMAGrep= sd[i].VMAGt;
                sd[i].narr+= st.sprintf("\r\nVMAGtrans= %0.3f", sd[i].VMAGt);
@@ -1669,20 +1774,45 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
-void SetStarData(StarData d)
+void SetStarData(StarData* d, int index)
 {
-   switch(d.filter) {
-      case FILT_Ui: us= d.VMAG; uc= d.CMAG; Uc= d.CREFmag;    Uts= d.DATEs;
-                    rus= d.VERR; ruc= d.CERR; rUc= d.CREFerr; break;
-      case FILT_Bi: bs= d.VMAG; bc= d.CMAG; Bc= d.CREFmag;    Bts= d.DATEs;
-                    rbs= d.VERR; rbc= d.CERR; rBc= d.CREFerr; break;
-      case FILT_Vi: vs= d.VMAG; vc= d.CMAG; Vc= d.CREFmag;    Vts= d.DATEs;
-                    rvs= d.VERR; rvc= d.CERR; rVc= d.CREFerr; break;
-      case FILT_Ri: rs= d.VMAG; rc= d.CMAG; Rc= d.CREFmag;    Rts= d.DATEs;
-                    rrs= d.VERR; rrc= d.CERR; rRc= d.CREFerr; break;
-      case FILT_Ii: is= d.VMAG; ic= d.CMAG; Ic= d.CREFmag;    Its= d.DATEs;
-                    ris= d.VERR; ric= d.CERR; rIc= d.CREFerr; break;
+   switch(d->filter) {
+      case FILT_Ui: us= d->VMAG; uc= d->CMAG; Uc= d->CREFmag;    Uts= d->DATEs;
+                    rus= d->VERR; ruc= d->CERR; rUc= d->CREFerr; break;
+      case FILT_Bi: bs= d->VMAG; bc= d->CMAG; Bc= d->CREFmag;    Bts= d->DATEs;
+                    rbs= d->VERR; rbc= d->CERR; rBc= d->CREFerr; break;
+      case FILT_Vi: vs= d->VMAG; vc= d->CMAG; Vc= d->CREFmag;    Vts= d->DATEs;
+                    rvs= d->VERR; rvc= d->CERR; rVc= d->CREFerr; break;
+      case FILT_Ri: rs= d->VMAG; rc= d->CMAG; Rc= d->CREFmag;    Rts= d->DATEs;
+                    rrs= d->VERR; rrc= d->CERR; rRc= d->CREFerr; break;
+      case FILT_Ii: is= d->VMAG; ic= d->CMAG; Ic= d->CREFmag;    Its= d->DATEs;
+                    ris= d->VERR; ric= d->CERR; rIc= d->CREFerr; break;
    }
+   // capture latest color information if needed and available
+   if(d->BVcolor== -999) { // doesn't have color info
+      for(int i= index- 1; i >= 0; i--) { // look in prior star records
+         if(d->NAME==sd[i].NAME && sd[i].processed) { // same star and already processed
+            if(d->filter==sd[i].filter && sd[i].BVcolor!= -999) { // same filter and valid data
+               d->BVcolor= sd[i].BVcolor;
+               d->BVcolorErr= sd[i].BVcolorErr;
+               break;
+            }
+         }
+      }
+   }
+   if(d->VIcolor== -999) { // doesn't have color info
+      for(int i= index- 1; i >= 0; i--) { // look in prior star records
+         if(d->NAME==sd[i].NAME && sd[i].processed) { // same star and already processed
+            if(d->filter==sd[i].filter && sd[i].VIcolor!= -999) { // same filter and valid data
+               d->VIcolor= sd[i].VIcolor;
+               d->VIcolorErr= sd[i].VIcolorErr;
+               break;
+            }
+         }
+      }
+   }
+
+
 }
 
 float fTxy   (char x, char y,         float Txy,   float rTxy,   int mode, char* tdesc);
@@ -1730,7 +1860,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1, Rtdesc); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -1741,7 +1871,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1784,7 +1914,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
             Rs = fTxy( v, r, Tvr, rTvr, 2, Rtdesc);
             Is = fTxy( r, i, Tri, rTri, 2, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= "# BVRI Arne alternate : B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -1795,7 +1925,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTxy( v, r, Tvr, rTvr, 12, Rtdesc);
             rIs = fTxy( r, i, Tri, rTri, 12, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1812,7 +1942,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
             //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             //Vs = vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1820,7 +1950,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVs:
@@ -1837,7 +1967,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1845,7 +1975,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1864,7 +1994,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             //Rs = rs + (Rc-rc) + Tr_vr * ((Vs-Rs)-(Vc-Rc));
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
             Rs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 1, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1872,7 +2002,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
             rRs = fTx_yz(r, v, r, Tr_vr, rTr_vr, 11, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_VRs:
@@ -1889,7 +2019,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1897,7 +2027,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -1916,7 +2046,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1, Vtdesc);
             Rs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 1, Rtdesc);
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+ " using:  V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1925,7 +2055,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11, Vtdesc);
             rRs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_VRIs:
@@ -1943,7 +2073,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
             Is = fTxy(r, i, Tri, rTri, 2, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using:  V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1952,7 +2082,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
             rIs = fTxy(r, i, Tri, rTri, 12, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_VRIc:
@@ -1985,7 +2115,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
             Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -1994,7 +2124,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVRs:
@@ -2012,7 +2142,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2021,7 +2151,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVRc:
@@ -2039,7 +2169,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTxy(b, v, Tbv, rTbv, 1, Btdesc);
             Vs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 1, Vtdesc);
             Rs = fTxy(v, r, Tvr, rTvr, 2, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2048,7 +2178,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTxy(b, v, Tbv, rTbv, 11, Btdesc);
             rVs = fTx_yz(v, v, r, Tv_vr, rTv_vr, 11, Vtdesc);
             rRs = fTxy(v, r, Tvr, rTvr, 12, Rtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2067,7 +2197,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
             Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1, Vtdesc);
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2075,7 +2205,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
             rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11, Vtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2091,7 +2221,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc); //Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc); //Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2100,7 +2230,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVIc:
@@ -2118,7 +2248,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTxy(b, v, Tbv, rTbv, 1, Btdesc);
             Vs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 1, Vtdesc);
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2127,7 +2257,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTxy(b, v, Tbv, rTbv, 11, Btdesc);
             rVs = fTx_yz(v, v, i, Tv_vi, rTv_vi, 11, Vtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
       case FILTC_BVIa:
@@ -2142,7 +2272,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: B @ "+ sd[sf[FILT_Bi]].DATEs+ ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
          rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
@@ -2151,7 +2281,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2169,7 +2299,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Rs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 1, Rtdesc); //rs + (Rc-rc) + Tr_vi * ((Vs-Is)-(Vc-Ic));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -2181,7 +2311,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTx_yz( r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2198,7 +2328,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
             Is = fTx_yz( i, v, i, Ti_vi, rTi_vi, 1, Itdesc); //is + (Ic-ic) + Ti_vi * ((Vs-Is)-(Vc-Ic));
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -2209,7 +2339,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rIs = fTx_yz( i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2225,7 +2355,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Us = fTx_yz( u, u, b, Tu_ub, rTu_ub, 1, Utdesc); //us + (Uc-uc) + Tu_ub * ((Us-Bs)-(Uc-Bc));
             Bs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc); //vs + (Vc-vc) + Tv_bv * ((Bs-Vs)-(Bc-Vc));
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001);
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs;
@@ -2235,7 +2365,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rUs = fTx_yz( u, u, b, Tu_ub, rTu_ub, 11, Utdesc);
             rBs = fTx_yz( b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001);
          break;
 
@@ -2253,7 +2383,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Vs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
             Rs = fTxy( v, r, Tvr, rTvr, 2, Rtdesc);
             Is = fTxy( r, i, Tri, rTri, 2, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", R @ "+ sd[sf[FILT_Ri]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -2265,7 +2395,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rVs = fTx_yz( v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
             rRs = fTxy( v, r, Tvr, rTvr, 12, Rtdesc);
             rIs = fTxy( r, i, Tri, rTri, 12, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2282,7 +2412,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc); //Bs = bs + (Bc-bc) + Tb_bv * ((Bs-Vs)-(Bc-Vc));
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc); //Vs = Bs - (Bc-Vc) - Tbv* ((bs-vs)-(bc-vc));
             Is = fTxy(v, i, Tvi, rTvi, 2, Itdesc); //Is = Vs - (Vc-Ic) - Tvi* ((vs-is)-(vc-ic));
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs), fabs(Is-oIs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Is-oIs)>0.0001 );
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs+ ", I @ "+ sd[sf[FILT_Ii]].DATEs;
@@ -2293,7 +2423,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
             rIs = fTxy(v, i, Tvi, rTvi, 12, Itdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs), fabs(rIs-roIs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rIs-roIs)>0.0001 );
          break;
 
@@ -2309,7 +2439,7 @@ void ProcessStarData(StarData *d, unsigned short fc)
             Us = fTxy(u, b, Tub, rTub, 1, Utdesc);
             Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
             Vs = fTxy(b, v, Tbv, rTbv, 2, Vtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f", fabs(Us-oUs), fabs(Bs-oBs), fabs(Vs-oVs)));
          } while ( fabs(Us-oUs)>0.0001 || fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001);
          d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: U @ "+ sd[sf[FILT_Ui]].DATEs + ", B @ "+ sd[sf[FILT_Bi]].DATEs
            + ", V @ "+ sd[sf[FILT_Vi]].DATEs;
@@ -2319,9 +2449,120 @@ void ProcessStarData(StarData *d, unsigned short fc)
             rUs = fTxy(u, b, Tub, rTub, 11, Utdesc);
             rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
             rVs = fTxy(b, v, Tbv, rTbv, 12, Vtdesc);
-            if(Debug) Form1->Memo4->Lines->Add(as.sprintf(" %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f", fabs(rUs-roUs), fabs(rBs-roBs), fabs(rVs-roVs)));
          } while ( fabs(rUs-roUs)>0.0001 || fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001);
          break;
+
+      // single filter cases
+      case FILTC_Ba:
+         if(Tb_bv==0 || d->BVcolor==-999) {
+            d->ErrorMsg+= " Missing information; need Tb_bv and BVcolor.";
+            d->TRANS= false;
+            break;
+         }
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
+         do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+            oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
+            Bs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 1, Btdesc);
+            Vs = Bs - d->BVcolor;
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+         } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: estimated BVcolor ";
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
+            roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
+            rVs= (rBs > d->BVcolorErr)? 0: sqrt( pow(d->BVcolorErr, 2) - pow(rBs, 2) );
+            rBs = fTx_yz(b, b, v, Tb_bv, rTb_bv, 11, Btdesc);
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+         } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
+         sprintf(Vtdesc, "%c%c%ccolor=%.4f%c%c%ccolorErr=%.4f", ndelim, toupper(b), toupper(v), d->BVcolor, ndelim, toupper(b), toupper(v), d->BVcolorErr);
+         strcat(Btdesc, Vtdesc);
+         break;
+
+      case FILTC_Va:
+         if(Tv_bv==0 || d->BVcolor==-999) {
+            d->ErrorMsg+= " Missing information; need Tv_bv and BVcolor.";
+            d->TRANS= false;
+            break;
+         }
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
+         do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+            oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
+            Vs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 1, Vtdesc);
+            Bs = Vs + d->BVcolor;
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+         } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: estimated BVcolor ";
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
+            roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
+            rBs= (rVs > d->BVcolorErr)? 0: sqrt( pow(d->BVcolorErr, 2) - pow(rVs, 2) );
+            rVs = fTx_yz(v, b, v, Tv_bv, rTv_bv, 11, Vtdesc);
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+         } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
+         sprintf(Btdesc, "%c%c%ccolor=%.4f%c%c%ccolorErr=%.4f", ndelim, toupper(b), toupper(v), d->BVcolor, ndelim, toupper(b), toupper(v), d->BVcolorErr);
+         strcat(Vtdesc, Btdesc);
+         break;
+
+      case FILTC_Ra:
+         if(Tr_vi==0 || d->VIcolor==-999) {
+            d->ErrorMsg+= " Missing information; need Tr_vi and VIcolor.";
+            d->TRANS= false;
+            break;
+         }
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
+         do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+            oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
+            Vs = 10; // arbitrary; doesn't matter
+            Is = Vs - d->VIcolor;
+            Rs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 1, Rtdesc);
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+         } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: estimated VIcolor ";
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
+            roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
+            rVs= 0;
+            rIs= d->VIcolorErr;
+            rRs = fTx_yz(r, v, i, Tr_vi, rTr_vi, 11, Rtdesc);
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+         } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
+         sprintf(Vtdesc, "%c%c%ccolor=%.4f%c%c%ccolorErr=%.4f", ndelim, toupper(v), toupper(i), d->VIcolor, ndelim, toupper(v), toupper(i), d->VIcolorErr);
+         strcat(Rtdesc, Vtdesc);
+         break;
+
+
+
+      case FILTC_Ia:
+         if(Ti_vi==0 || d->VIcolor==-999) {
+            d->ErrorMsg+= " Missing information; need Ti_vi and VIcolor.";
+            d->TRANS= false;
+            break;
+         }
+         Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
+         do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= false; break; }
+            oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
+            Is = fTx_yz(i, v, i, Ti_vi, rTi_vi, 1, Itdesc);
+            Vs = Is + d->VIcolor;
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("V %0.4f, %0.4f, %0.4f, %0.4f", fabs(Bs-oBs), fabs(Vs-oVs), fabs(Rs-oRs), fabs(Is-oIs)));
+         } while ( fabs(Bs-oBs)>0.0001 || fabs(Vs-oVs)>0.0001 || fabs(Rs-oRs)>0.0001 || fabs(Is-oIs)>0.0001 );
+         d->StarsUsed= FILTC_desc[FILTC_mask2index(fc)][0]+" using: estimated VIcolor ";
+         rBs= rbs, rVs= rvs, rRs= rrs, rIs= ris; loop= 0;
+         do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula e error! Check your coefficients!"; d->TRANS= false; break; }
+            roBs= rBs, roVs= rVs, roRs= rRs, roIs= rIs;
+            rVs= (rIs > d->VIcolorErr)? 0: sqrt( pow(d->VIcolorErr, 2) - pow(rIs, 2) );
+            rIs = fTx_yz(i, v, i, Ti_vi, rTi_vi, 11, Itdesc);
+            if(Debug) Form1->Memo4->Lines->Add(as.sprintf("E %0.4f, %0.4f, %0.4f, %0.4f", fabs(rBs-roBs), fabs(rVs-roVs), fabs(rRs-roRs), fabs(rIs-roIs)));
+         } while ( fabs(rBs-roBs)>0.0001 || fabs(rVs-roVs)>0.0001 || fabs(rRs-roRs)>0.0001 || fabs(rIs-roIs)>0.0001 );
+         sprintf(Vtdesc, "%c%c%ccolor=%.4f%c%c%ccolorErr=%.4f", ndelim, toupper(v), toupper(i), d->VIcolor, ndelim, toupper(v), toupper(i), d->VIcolorErr);
+         strcat(Itdesc, Vtdesc);
+         break;
+
+
+
+
+
+
 
 
       default: // unknown combination
@@ -2423,6 +2664,12 @@ void __fastcall TForm1::Saveuntransformedobsfile1Click(TObject *Sender)
    SaveDialog1->Title= "Save the un-transformed observation file";
    SaveDialog1->Filter = "TXT files (*.txt)|*.TXT";
    if(SaveDialog1->Execute()) {
+//      // clean up empty lines
+//      for(int i= 0; i< Memo1->Lines->Count; i++)
+//         if(Memo1->Lines->Strings[i].Length() < 2)
+//           //Memo4->Lines->Add(Memo1->Lines->Strings[i].Length());
+//            Memo1->Lines->Delete(i),  i--;
+//  see http://delphi.about.com/od/objectpascalide/a/remove-empty-line-tstringlist-savetofile.htm
       Memo1->Lines->SaveToFile(SaveDialog1->FileName);
       UnTransformedFile= SaveDialog1->FileName;
    }

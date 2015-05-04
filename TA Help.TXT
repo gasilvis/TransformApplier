@@ -38,11 +38,12 @@ Txy is a coefficient (called color or secondary) of the form:
     1/ slope of (x-y) vs (X-Y)   of your standard star field data.
     where lower case variables are observed mags, capitalized are standard mags.
     eg.  Tbv is 1/ slope of (b-v) vs (B-V)
-Tx_yz is a coefficient (called star or primary) of the form:
+Tx_yz is a coefficient (called magnitude or primary) of the form:
     slope of (X-x) vs (Y-Z)
     eg.  Tb_bv is slope of (B-b) vs (B-V)
 (nb. the AAVSO is working on a tool to help you calculate your coefficients from a set of
-observations of a standard field like M67)
+observations of a standard field like M67. This is called TG, the Transform Generator. Search
+for it on the AAVSO website)
 
 - The AAVOS recommended transforms that the TA performs require the following coefficients:
 for      U       B       V       R       I
@@ -56,6 +57,11 @@ VRI                    Tv_vi   Tr_vi   Tvi
 BV             Tb_bv   Tv_bv
 VR                     Tv_vr   Tr_vr
 VI                     Tv_vi           Tvi
+B              Tb_bv 
+V                      Tv_bv
+R                              Tr_vi
+I                                      Ti_vi
+
 To transform your data you need to group your observations. Above is the list of groupings that
 are supported and the coefficients that are required. If you have not loaded these into the
 coefficients page, you will get a complaint from TA.
@@ -83,11 +89,23 @@ VI                     Tv_vi           Tvi
 Classic BVRI and VRI are deprecated because they use too many coefficients, one more than is
 needed. This reduces the value of the result.
 
-- Coefficient error values: Yes, you should submit the errors related to your coefficients. The
+- Single filter transforms: These require additional information to work, either the BV color
+of the target or the VI color. There are two ways to do this: 1) include a #BVCOLOR= or 
+#VICOLOR= record in your submission file that includes the color and its error. Place this at
+the beginning of your input file. Or, 2) you can include an extra observation in the companion
+filter at the beginning and the system will apply the color it finds there. For example, if
+you submit VBBBBBBBBBB observations then the first VB will transform together and create the
+BV color needed for the following B single filter transforms. This should be possible since if
+you have a Tb_bv coefficient you must have a V filter available. If you want to update the color
+during the run, make periodic V observations. eg. VBBBBBBBVBBBBBBBBVBBBBBBB. You will need to 
+assign a group id to the VB observations so they transform together and thus offer the new 
+color to the following B's.
+ 
+- Coefficient error values: Yes, you should submit the errors related to your coefficients. 
 TA will propagate them into the final error of the observation. If you have used an Excel
 spreadsheet and the LINEST function, extract the error with (eg) =INDEX(LINEST
 (b_v,Bref_Vref,1,1),2,1) that is, the se, standard error, of the slope estimate.
-PTGP provides this error value for you.
+TG (the Transform Generator program by Gordon Myers) provides this error value for you.
 
 - Error computations: TA will compute a revised observation error based on the VERR you 
 submitted (which should be the instrumental errors of star and comp combined in quadrature)
@@ -113,8 +131,8 @@ mountains:  B: 0.263, V: 0.137, R: 0.099, I: 0.053
 airmasses to the extinction computations. You can see the airmass for V, C and K on the
 extinction tab. To do this you need the Observatory location. Many softwares provide it in 
 the AAVSO formatted output as #OBSLON= and #OBSLAT= records. If your's doesnot you can 
-enter it on the Extinction tab and it will be remembered in your INI file.
-- Star coordinates are gathered from VSP and VSX for the target, comp and check star.
+enter it on the Extinction tab and it will be remembered in your INI file. Note that the
+star coordinates are gathered from VSP and VSX for the target, comp and check star.
 
 - Aggregating your data: If you have multiple observations of a variable star that is
 varying 100 times slower than the time span of your observations, then you should aggregate
@@ -125,7 +143,8 @@ looking for a more sophisticated aggregation, you should use the Boxter program.
 
 - Grouping: You should assign your observations into transform groups. If you do not, TA will
 attempt to group them for you. You should review the output to make sure they were grouped in a
-reasonable fashion.
+reasonable fashion. TA will group them in order, building the largest transform groups that
+it can.
 
 - Use of the Std Field check box: If your chartid was generated with the "Would you like a 
 Standard Field Chart", then check this box so TA will know how to fetch that data. This is 

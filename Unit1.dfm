@@ -1,6 +1,6 @@
 object Form1: TForm1
   Left = 240
-  Top = 35
+  Top = 29
   Width = 1141
   Height = 839
   HorzScrollBar.Visible = False
@@ -1339,13 +1339,18 @@ object Form1: TForm1
             '    where lower case variables are observed mags, capitalized ar' +
             'e standard mags.'
           '    eg.  Tbv is 1/ slope of (b-v) vs (B-V)'
-          'Tx_yz is a coefficient (called star or primary) of the form:'
+          
+            'Tx_yz is a coefficient (called magnitude or primary) of the form' +
+            ':'
           '    slope of (X-x) vs (Y-Z)'
           '    eg.  Tb_bv is slope of (B-b) vs (B-V)'
           
             '(nb. the AAVSO is working on a tool to help you calculate your c' +
             'oefficients from a set of'
-          'observations of a standard field like M67)'
+          
+            'observations of a standard field like M67. This is called TG, th' +
+            'e Transform Generator. Search'
+          'for it on the AAVSO website)'
           ''
           
             '- The AAVOS recommended transforms that the TA performs require ' +
@@ -1361,6 +1366,11 @@ object Form1: TForm1
           'BV             Tb_bv   Tv_bv'
           'VR                     Tv_vr   Tr_vr'
           'VI                     Tv_vi           Tvi'
+          'B              Tb_bv '
+          'V                      Tv_bv'
+          'R                              Tr_vi'
+          'I                                      Ti_vi'
+          ''
           
             'To transform your data you need to group your observations. Abov' +
             'e is the list of groupings that'
@@ -1395,8 +1405,40 @@ object Form1: TForm1
           'needed. This reduces the value of the result.'
           ''
           
+            '- Single filter transforms: These require additional information' +
+            ' to work, either the BV color'
+          
+            'of the target or the VI color. There are two ways to do this: 1)' +
+            ' include a #BVCOLOR= or '
+          
+            '#VICOLOR= record in your submission file that includes the color' +
+            ' and its error. Place this at'
+          
+            'the beginning of your input file. Or, 2) you can include an extr' +
+            'a observation in the companion'
+          
+            'filter at the beginning and the system will apply the color it f' +
+            'inds there. For example, if'
+          
+            'you submit VBBBBBBBBBB observations then the first VB will trans' +
+            'form together and create the'
+          
+            'BV color needed for the following B single filter transforms. Th' +
+            'is should be possible since if'
+          
+            'you have a Tb_bv coefficient you must have a V filter available.' +
+            ' If you want to update the color'
+          
+            'during the run, make periodic V observations. eg. VBBBBBBBVBBBBB' +
+            'BBBVBBBBBBB. You will need to '
+          
+            'assign a group id to the VB observations so they transform toget' +
+            'her and thus offer the new '
+          'color to the following B'#39's.'
+          ' '
+          
             '- Coefficient error values: Yes, you should submit the errors re' +
-            'lated to your coefficients. The'
+            'lated to your coefficients. '
           
             'TA will propagate them into the final error of the observation. ' +
             'If you have used an Excel'
@@ -1406,7 +1448,9 @@ object Form1: TForm1
           
             '(b_v,Bref_Vref,1,1),2,1) that is, the se, standard error, of the' +
             ' slope estimate.'
-          'PTGP provides this error value for you.'
+          
+            'TG (the Transform Generator program by Gordon Myers) provides th' +
+            'is error value for you.'
           ''
           
             '- Error computations: TA will compute a revised observation erro' +
@@ -1468,10 +1512,10 @@ object Form1: TForm1
             'your'#39's doesnot you can '
           
             'enter it on the Extinction tab and it will be remembered in your' +
-            ' INI file.'
+            ' INI file. Note that the'
           
-            '- Star coordinates are gathered from VSP and VSX for the target,' +
-            ' comp and check star.'
+            'star coordinates are gathered from VSP and VSX for the target, c' +
+            'omp and check star.'
           ''
           
             '- Aggregating your data: If you have multiple observations of a ' +
@@ -1498,7 +1542,10 @@ object Form1: TForm1
           
             'attempt to group them for you. You should review the output to m' +
             'ake sure they were grouped in a'
-          'reasonable fashion.'
+          
+            'reasonable fashion. TA will group them in order, building the la' +
+            'rgest transform groups that'
+          'it can.'
           ''
           
             '- Use of the Std Field check box: If your chartid was generated ' +
@@ -1638,7 +1685,7 @@ object Form1: TForm1
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 781
     DesignFormLeft = 240
-    DesignFormTop = 35
+    DesignFormTop = 29
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18
