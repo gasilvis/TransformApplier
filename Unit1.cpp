@@ -210,7 +210,7 @@ void __fastcall TForm1::FormCreate(TObject *Sender)
 
    if(httpGet("http://www.gasilvis.com/TA/TAlog.php", cp, sizeof(cp))) {
       sscanf(cp, "%f", &cver); cver= (floor(0.5+ cver*100.0)/100.0);
-      if(cver > Version) {
+      if(cver > Version+ 0.001) {
          //versionLabel->Tag= 1;
          versionLabel->Font->Color= clBlue;
          versionLabel->Caption= s.sprintf("Click here to download version %.2f", cver);
