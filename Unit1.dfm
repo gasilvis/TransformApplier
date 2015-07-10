@@ -1420,21 +1420,21 @@ object Form1: TForm1
             'filter at the beginning and the system will apply the color it f' +
             'inds there. For example, if'
           
-            'you submit VBBBBBBBBBB observations then the first VB will trans' +
+            'you submit BVVVVVVVVVV observations then the first BV will trans' +
             'form together and create the'
           
-            'BV color needed for the following B single filter transforms. Th' +
+            'BV color needed for the following V single filter transforms. Th' +
             'is should be possible since if'
           
             'you have a Tb_bv coefficient you must have a V filter available.' +
             ' If you want to update the color'
           
-            'during the run, make periodic V observations. eg. VBBBBBBBVBBBBB' +
-            'BBBVBBBBBBB. You will need to '
+            'during the run, make periodic V observations. eg. BVVVVVVVVVBVVV' +
+            'VVVVBVVVVVVVV. You will need to '
           
-            'assign a group id to the VB observations so they transform toget' +
+            'assign a group id to the BV observations so they transform toget' +
             'her and thus offer the new '
-          'color to the following B'#39's.'
+          'color to the following V'#39's.'
           ' '
           
             '- Coefficient error values: Yes, you should submit the errors re' +

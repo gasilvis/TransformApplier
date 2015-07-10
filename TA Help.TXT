@@ -94,12 +94,12 @@ of the target or the VI color. There are two ways to do this: 1) include a #BVCO
 #VICOLOR= record in your submission file that includes the color and its error. Place this at
 the beginning of your input file. Or, 2) you can include an extra observation in the companion
 filter at the beginning and the system will apply the color it finds there. For example, if
-you submit VBBBBBBBBBB observations then the first VB will transform together and create the
-BV color needed for the following B single filter transforms. This should be possible since if
+you submit BVVVVVVVVVV observations then the first BV will transform together and create the
+BV color needed for the following V single filter transforms. This should be possible since if
 you have a Tb_bv coefficient you must have a V filter available. If you want to update the color
-during the run, make periodic V observations. eg. VBBBBBBBVBBBBBBBBVBBBBBBB. You will need to 
-assign a group id to the VB observations so they transform together and thus offer the new 
-color to the following B's.
+during the run, make periodic V observations. eg. BVVVVVVVVVBVVVVVVVBVVVVVVVV. You will need to 
+assign a group id to the BV observations so they transform together and thus offer the new 
+color to the following V's.
  
 - Coefficient error values: Yes, you should submit the errors related to your coefficients. 
 TA will propagate them into the final error of the observation. If you have used an Excel
