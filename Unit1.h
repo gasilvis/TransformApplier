@@ -100,7 +100,6 @@ __published:	// IDE-managed Components
    TEdit *rTi_bvEdit;
    TEdit *Ti_bvEdit;
    TEdit *Tr_bvEdit;
-   TButton *Button1;
    THttpCli *HttpCli1;
    TButton *Button2;
    TButton *Button3;
@@ -167,6 +166,7 @@ __published:	// IDE-managed Components
    TEdit *ObsLonEdit;
    TEdit *ObsLatEdit;
    TLabel *Label21;
+   TButton *Button1;
    void __fastcall FormCreate(TObject *Sender);
    void __fastcall ProcessButtonClick(TObject *Sender);
    void __fastcall NumericOnExit(TObject *Sender);

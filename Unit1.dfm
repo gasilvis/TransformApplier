@@ -1603,10 +1603,10 @@ object Form1: TForm1
       ImageIndex = 5
       OnEnter = AnalysisTabSheetEnter
       object Panel3: TPanel
-        Left = 8
-        Top = 16
-        Width = 1125
-        Height = 745
+        Left = 32
+        Top = 24
+        Width = 1057
+        Height = 705
         Alignment = taLeftJustify
         TabOrder = 0
         Visible = False
@@ -1626,26 +1626,25 @@ object Form1: TForm1
           TabOrder = 0
         end
         object Memo5: TMemo
-          Left = 240
+          Left = 24
           Top = 168
-          Width = 793
+          Width = 1017
           Height = 241
           Lines.Strings = (
             'Memo5')
           TabOrder = 1
         end
+        object Button1: TButton
+          Left = 720
+          Top = 592
+          Width = 75
+          Height = 25
+          Caption = 'Button1'
+          TabOrder = 2
+          OnClick = Button1Click
+        end
       end
     end
-  end
-  object Button1: TButton
-    Left = 1016
-    Top = 640
-    Width = 75
-    Height = 25
-    Caption = 'Button1'
-    TabOrder = 1
-    Visible = False
-    OnClick = Button1Click
   end
   object MainMenu1: TMainMenu
     Left = 284

@@ -34,6 +34,7 @@
 #pragma link "HttpProt"
 #pragma link "LibXmlComps"
 #pragma link "LibXmlParser"
+// http://www.destructor.de/xmlparser/doc/xmlscanner.htm
 #pragma resource "*.dfm"
 TForm1 *Form1;
 
@@ -45,15 +46,18 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.39
+#define Version  2.40
 // if you change the version, change it too in  TAlog.php
 /*
+   2.40
+   - chart data dump avail on button 1
+   - use new API for AAVSO photometry
    2.39
    - report Vairmass for AMASS if extinction applied
    - edit of Tb_bv equation description
    - TRANS changed from bool to char
    - TRANS records will aggregate.... not sure its a good idea.
-       this allows post transform aggregation
+       this allows post transform aggregation. Comment field gets flooded.
    2.38
    - extinction turned back on and uses computed airmasses
    - search backwards for CREFMAG, KREFMAG information
@@ -1178,7 +1182,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          k+= j;
 
          j= s.SubString(k, 20).Pos(delim);
-         sd[sdi].CHART= s.SubString(k, j- 1);
+         sd[sdi].CHART= s.SubString(k, j- 1). UpperCase();
          k+= j;
 
          // if they added a comment in the edit window, the first char might be \n
@@ -1207,7 +1211,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             }
             if(-999==sd[sdi].CREFmag) { // try internet
                if(!getREFMAG(&sd[sdi], true)) {
-                  sd[sdi].ErrorMsg+= " No CREFMAG available. Possibly bad chart reference";
+                  sd[sdi].ErrorMsg+= " No CREFMAG available. Possibly bad chart reference.";
                   sd[sdi].processed= true; // skip record
                }
             }
@@ -1232,7 +1236,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             }
             if(-999==sd[sdi].KREFmag) { // try internet
                if(!getREFMAG(&sd[sdi], false)) {
-                  sd[sdi].ErrorMsg+= " No KREFMAG available. Possibly bad chart reference";
+                  sd[sdi].ErrorMsg+= " No KREFMAG available. Possibly bad chart reference.";
                   sd[sdi].processed= true; // skip record
                }
             }
@@ -2863,11 +2867,8 @@ double __fastcall ddmmss2radians(char* z) {
 //int __fastcall TForm1::getCREFMAG(TObject *Sender, StarData* sd)
 int __fastcall getREFMAG(StarData* sd, bool getc)
 {   // fill in sd C and K info from chart[]
-    int     I, ret;
-    char* pch; int j, i;
-    char  pchart[45][20];
-    int pi[]= {7, 10, 13, 16, 4};  // [FILT_NUM];
-    char cp[60000];
+    int     I, ret, j, i;
+    char cp[100000];
     AnsiString as;
 
     ret= checkChart(sd, getc);
@@ -2875,6 +2876,11 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
        return (ret==1)? 1: 0;
     } else { // no. let's get more chart data
        if(sd->CHART.Length()) { // assuming they gave us a chartid
+/*
+          // old VSP method
+          char* pch;
+          char  pchart[45][20];
+          int pi[]= {7, 10, 13, 16, 4};  // [FILT_NUM];
           AnsiString u= "http://www.aavso.org/cgi-bin/vsp.pl?chartid="+ sd->CHART+ "&delimited=yes";
           if(Form1->UseStdField->Checked) u+= "&std_field=on";
           // eg   http://www.aavso.org/cgi-bin/vsp.pl?chartid=13591Dqq&delimited=yes
@@ -2907,14 +2913,67 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
                 chartNext++;
              }
           }
+
+*/
+          // new API call
+          AnsiString u= "http://www.aavso.org/apps/vsp/api/chart/"+ sd->CHART+ "/?format=xml";
+          if(Form1->UseStdField->Checked) u+= "&std_field=on";
+          // eg   http://www.aavso.org/apps/vsp/api/chart/2164EAF/?format=xml
+          if(!Form1->httpGet(u, cp, sizeof(cp))) {
+             sd->ErrorMsg+= " failed VSP API chart request.";
+             return 0;
+          }
+          // cp not big enough?
+          Form1->EasyXmlScanner1->LoadFromBuffer(cp);
+          Form1->EasyXmlScanner1->XmlParser->Normalize= true;
+          Form1->EasyXmlScanner1->XmlParser->StartScan();
+          int fref= 99;
+          AnsiString CurName, CurContent, ChartID;
+          while (Form1->EasyXmlScanner1->XmlParser->Scan()) {
+             if(Form1->EasyXmlScanner1->XmlParser->CurPartType == ptContent) {
+                CurName= Form1->EasyXmlScanner1->XmlParser->CurName;
+                CurContent= Form1->EasyXmlScanner1->XmlParser->CurContent;
+                if(CurName == "detail") { // CurContent will be "Not found."
+                   sd->ErrorMsg+= " Bad chart reference.";
+                   return 0; // won't get here. 404 error will precede
+                } else if(CurName == "chartid") {
+                   ChartID= CurContent.UpperCase();
+                   chart[chartNext % chartMAX].chartid= ChartID;
+                } else if(CurName == "auid") {
+                   chart[chartNext % chartMAX].AUID= CurContent;
+                } else if(CurName == "band") {
+                   for(fref= 0; fref< FILT_NUM; fref++) { // which filter? set fref
+                      if(CurContent.SubString(1, FILT_name[fref].Length()) == FILT_name[fref])
+                         break; // nb. API returns "B", "V", "Rc", "Ic"
+                   }
+                } else if(CurName == "mag" && fref != FILT_NUM) {
+                   chart[chartNext % chartMAX].sdata[fref].mag= CurContent.ToDouble();
+                } else if(CurName == "error" && fref != FILT_NUM) {
+                   chart[chartNext % chartMAX].sdata[fref].err= CurContent.ToDouble();
+                } else if(CurName == "label") {
+                   chart[chartNext % chartMAX].label= CurContent;
+                } else if(CurName == "ra") {
+                   chart[chartNext % chartMAX].RA= hhmmss2radians(CurContent.c_str());
+                } else if(CurName == "dec") {
+                   chart[chartNext % chartMAX].Dec= ddmmss2radians(CurContent.c_str());
+                   chartNext++; // end of record
+                   chart[chartNext % chartMAX].chartid= ChartID;
+                }
+             }
+          }
+
+
           // so, let's try again
           return (checkChart(sd, getc)== 1)? 1: 0;
        } else {
           sd->ErrorMsg+= " No chartid.";
           return 0;
        }
-    }
+   }
 }
+
+
+
 
 // get target data from VSX
 int __fastcall checkTargs(StarData* sd)
@@ -2954,7 +3013,8 @@ int __fastcall getTargInfo(StarData* sd)
              Form1->EasyXmlScanner1->LoadFromBuffer(cp);
              Form1->EasyXmlScanner1->XmlParser->Normalize= true;
              Form1->EasyXmlScanner1->XmlParser->StartScan();
-             //-- Loop thru the file for each item.
+             //-- Loop thru the file for each item. Just look for TD items, assuming
+             //   that they will not changed order (ie, not keying off the field table
              int cnt= 0;
              while (Form1->EasyXmlScanner1->XmlParser->Scan()) {
                 if(Form1->EasyXmlScanner1->XmlParser->CurPartType == ptStartTag) {
@@ -3000,9 +3060,25 @@ int __fastcall getTargInfo(StarData* sd)
 
 void __fastcall TForm1::Button1Click(TObject *Sender)
 {
-// xml xperiment http://www.aavso.org/vsx/index.php?view=query.votable&ident=S+Hya in file S_Hya.xml
-//  http://www.destructor.de/xmlparser/doc.htm
-  EasyXmlScanner1->LoadFromFile("S_Hya.xml");
+
+// dump chart data
+   AnsiString s, a;
+   Memo5->Clear();
+   for(int i= 0; i< chartNext; i++) {
+      s.sprintf("%s, %s, %s", chart[i].chartid, chart[i].AUID, chart[i].label);
+      for(int j= 0; j< FILT_NUM; j++) {
+         s+= a.sprintf( ", %5.3f, %5.3f", chart[i].sdata[j].mag, chart[i].sdata[j].err);
+      }
+      s+= a.sprintf(", %10.6f, %10.6f", chart[i].RA, chart[i].Dec);
+      Memo5->Lines->Add(s);
+   }
+
+/*
+// xml xperiments http://www.aavso.org/vsx/index.php?view=query.votable&ident=S+Hya in file S_Hya.xml
+
+//   http://www.aavso.org/apps/vsp/api/chart/2164EAF/?format=xml  is test.xml
+//   http://www.destructor.de/xmlparser/doc.htm
+  EasyXmlScanner1->LoadFromFile("test.xml");
 //  XmlScanner1->Execute();
 
   // This is a really ugly way to extract data from the VOTable xml. sigh.
@@ -3011,23 +3087,15 @@ void __fastcall TForm1::Button1Click(TObject *Sender)
   EasyXmlScanner1->XmlParser->StartScan();
 
   //-- Loop thru the file for each item.
-  AnsiString s;
-  int cnt= 0;
+  AnsiString s, a;
+  Memo5->Clear();
   while (EasyXmlScanner1->XmlParser->Scan()) {
-     if(EasyXmlScanner1->XmlParser->CurPartType == ptStartTag) {
-        if(EasyXmlScanner1->XmlParser->CurName == "TD") {
-           EasyXmlScanner1->XmlParser->Scan(); // pop out content
-           s= "";
-           switch(++cnt) {
-              case  1: s.sprintf("auid=%s", EasyXmlScanner1->XmlParser->CurContent); break;
-              case  4: s.sprintf("coord=%s", EasyXmlScanner1->XmlParser->CurContent); break;
-              case  5: s.sprintf("vartype=%s", EasyXmlScanner1->XmlParser->CurContent); break;
-              case 14: s.sprintf("spectype=%s", EasyXmlScanner1->XmlParser->CurContent); break;
-           }
-           if(s.Length()) Memo5->Lines->Add(s);
-        }
+     if(EasyXmlScanner1->XmlParser->CurPartType == ptContent) {
+        s.sprintf("%s : %s ", EasyXmlScanner1->XmlParser->CurName, EasyXmlScanner1->XmlParser->CurContent);
+        Memo5->Lines->Add(s);
      }
   }
+*/
 }
 //---------------------------------------------------------------------------
 
@@ -3259,10 +3327,14 @@ bool __fastcall TForm1::httpGet(AnsiString URL, char* buffer, int bufsize)
       remove(HttpCli1->DocName.c_str());
       return true;
    } __except (TRUE) {
-      Form1->Memo4->Lines->Add("GET Failed !");
-      Form1->Memo4->Lines->Add("StatusCode   = " + IntToStr(Form1->HttpCli1->StatusCode));
-      Form1->Memo4->Lines->Add("ReasonPhrase = " + Form1->HttpCli1->ReasonPhrase);
-      return false;
+      if(Form1->HttpCli1->StatusCode==404) {
+         return false; // let caller cope with "not found"
+      } else {
+         Form1->Memo4->Lines->Add("GET Failed !");
+         Form1->Memo4->Lines->Add("StatusCode   = " + IntToStr(Form1->HttpCli1->StatusCode));
+         Form1->Memo4->Lines->Add("ReasonPhrase = " + Form1->HttpCli1->ReasonPhrase);
+         return false;
+      }
    }
 }
 
@@ -3323,6 +3395,7 @@ float __fastcall AirMass(double JD, double RA, double Dec) // Observatory locati
    double G13= sin(ObsLatitude)*sin(G11)+ cos(ObsLatitude)*cos(G11)*cos(G12);
    return ((a*G13+ b)*G13+ c)/((((G13+ d)*G13)+ e)*G13+ f);
 }
+
 
 
 
