@@ -46,9 +46,11 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.40
+#define Version  2.41
 // if you change the version, change it too in  TAlog.php
 /*
+   2.41
+   - fix call to new api
    2.40
    - chart data dump avail on button 1
    - use new API for AAVSO photometry
@@ -2881,9 +2883,10 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
           char* pch;
           char  pchart[45][20];
           int pi[]= {7, 10, 13, 16, 4};  // [FILT_NUM];
-          AnsiString u= "http://www.aavso.org/cgi-bin/vsp.pl?chartid="+ sd->CHART+ "&delimited=yes";
+          AnsiString u= "http://www.aavso.org/cgi-bin/vsp.pl?chartid="+ sd->CHART+ "&delimited=yes&ccdtable=on";
+//          AnsiString u= "http://www.aavso.org/cgi-bin/vsp_test.pl?chartid="+ sd->CHART+ "&delimited=yes&ccdtable=on";
           if(Form1->UseStdField->Checked) u+= "&std_field=on";
-          // eg   http://www.aavso.org/cgi-bin/vsp.pl?chartid=13591Dqq&delimited=yes
+          // eg   http://www.aavso.org/cgi-bin/vsp.pl?chartid=13591Dqq&delimited=yes&ccdtable=on
           if(!Form1->httpGet(u, cp, sizeof(cp))) {
              sd->ErrorMsg+= " failed chart request.";
              return 0;
@@ -2915,19 +2918,23 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
           }
 
 */
+
           // new API call
-          AnsiString u= "http://www.aavso.org/apps/vsp/api/chart/"+ sd->CHART+ "/?format=xml";
+          AnsiString u= "http://www.aavso.org/apps/vsp/api/chart/"+ sd->CHART+ "/?format=xml&ccdtable=on";
           if(Form1->UseStdField->Checked) u+= "&std_field=on";
-          // eg   http://www.aavso.org/apps/vsp/api/chart/2164EAF/?format=xml
+          // eg   http://www.aavso.org/apps/vsp/api/chart/2164EAF/?format=xml&ccdtable=on
           if(!Form1->httpGet(u, cp, sizeof(cp))) {
              sd->ErrorMsg+= " failed VSP API chart request.";
              return 0;
           }
           // cp not big enough?
+//          FILE * tf= fopen("testing.txt", "wt");
+//          fwrite(cp, 1, strlen(cp), tf);
+//          fclose(tf);
           Form1->EasyXmlScanner1->LoadFromBuffer(cp);
           Form1->EasyXmlScanner1->XmlParser->Normalize= true;
           Form1->EasyXmlScanner1->XmlParser->StartScan();
-          int fref= 99;
+             int fref= 99;
           AnsiString CurName, CurContent, ChartID;
           while (Form1->EasyXmlScanner1->XmlParser->Scan()) {
              if(Form1->EasyXmlScanner1->XmlParser->CurPartType == ptContent) {
