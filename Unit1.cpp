@@ -46,9 +46,11 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.41
+#define Version  2.42
 // if you change the version, change it too in  TAlog.php
 /*
+   2.42
+   - tweak to new api for std_field 
    2.41
    - fix call to new api
    2.40
@@ -2920,9 +2922,9 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
 */
 
           // new API call
-          AnsiString u= "http://www.aavso.org/apps/vsp/api/chart/"+ sd->CHART+ "/?format=xml&ccdtable=on";
-          if(Form1->UseStdField->Checked) u+= "&std_field=on";
-          // eg   http://www.aavso.org/apps/vsp/api/chart/2164EAF/?format=xml&ccdtable=on
+          AnsiString u= "http://www.aavso.org/apps/vsp/api/chart/"+ sd->CHART+ "/?format=xml";
+          if(Form1->UseStdField->Checked) u+= "&special=std_field";
+          // eg   http://www.aavso.org/apps/vsp/api/chart/2164EAF/?format=xml
           if(!Form1->httpGet(u, cp, sizeof(cp))) {
              sd->ErrorMsg+= " failed VSP API chart request.";
              return 0;
