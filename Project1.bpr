@@ -22,7 +22,7 @@
     <DEBUGLIBPATH value="$(BCB)\lib\debug"/>
     <RELEASELIBPATH value="$(BCB)\lib\release"/>
     <LINKER value="tlink32"/>
-    <USERDEFINES value="_DEBUG"/>
+    <USERDEFINES value="_DEBUG;USE_SSL"/>
     <SYSDEFINES value="NO_STRICT"/>
     <MAINSOURCE value="Project1.cpp"/>
     <INCLUDEPATH value="$(BCB)\APRO;$(BCB)\include;$(BCB)\include\vcl;$(BCB)\ICS\delphi\vc32;$(BCB)\xmlparser"/>
@@ -71,10 +71,11 @@ ProductVersion=1.0.0.0
 Comments=
 
 [HistoryLists\hlIncludePath]
-Count=3
+Count=4
 Item0=$(BCB)\APRO;$(BCB)\include;$(BCB)\include\vcl;$(BCB)\ICS\delphi\vc32;$(BCB)\xmlparser
-Item1=$(BCB)\APRO;$(BCB)\include;$(BCB)\include\vcl;$(BCB)\ICS\delphi\vc32
-Item2=$(BCB)\APRO;$(BCB)\include;$(BCB)\include\vcl
+Item1=$(BCB)\APRO;$(BCB)\include;$(BCB)\include\vcl;$(BCB)\ICS5\delphi\vc32;$(BCB)\xmlparser
+Item2=$(BCB)\APRO;$(BCB)\include;$(BCB)\include\vcl;$(BCB)\ICS\delphi\vc32
+Item3=$(BCB)\APRO;$(BCB)\include;$(BCB)\include\vcl
 
 [HistoryLists\hlLibraryPath]
 Count=1
@@ -85,8 +86,9 @@ Count=1
 Item0=$(BCB)\source\vcl
 
 [HistoryLists\hlConditionals]
-Count=1
-Item0=_DEBUG
+Count=2
+Item0=_DEBUG;USE_SSL
+Item1=_DEBUG
 
 [Debugging]
 DebugSourceDirs=$(BCB)\source\vcl

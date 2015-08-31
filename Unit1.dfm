@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 240
-  Top = 29
+  Left = 282
+  Top = 28
   Width = 1141
   Height = 839
   HorzScrollBar.Visible = False
@@ -85,7 +85,7 @@ object Form1: TForm1
       end
       object ProcessButton: TButton
         Left = 24
-        Top = 416
+        Top = 448
         Width = 105
         Height = 25
         Hint = 'Transform  the untransformed'
@@ -1683,8 +1683,8 @@ object Form1: TForm1
     DesignFormHeight = 839
     DesignFormClientWidth = 1133
     DesignFormClientHeight = 781
-    DesignFormLeft = 240
-    DesignFormTop = 29
+    DesignFormLeft = 282
+    DesignFormTop = 28
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -18

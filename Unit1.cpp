@@ -46,9 +46,13 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.42
+#define Version  2.43
 // if you change the version, change it too in  TAlog.php
 /*
+   2.43
+   - error in sexigesimal to radians
+   - improve xml parsing of VSP data
+   - prevent restart of process
    2.42
    - tweak to new api for std_field 
    2.41
@@ -948,7 +952,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    ObsCode= "", ObsType= "";
    delim= ';';  ndelim= '|'; // defaults
    Memo6->Lines->Clear();
-
+   ProcessButton->Enabled= false;
+   
    // Extinction turned off
 //   applyExtinction->Checked= false;
 
@@ -985,7 +990,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          if(s.SubString(2, 5)== "TYPE=") {
              if(s.SubString(7, 8).UpperCase()!= "EXTENDED") {
                 ShowMessage("The file must be of #TYPE=EXTENDED");
-                return;
+                goto processEnd; //return;
              }
          } else
          if(s.SubString(2, 7)== "OBSLON=") {
@@ -1055,7 +1060,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
         else { // data line
          if(sdi==sdiMAX) {
             ShowMessage("Too many observations in the file.");
-            return;
+            goto processEnd; //return;
          }
          sdi++;
 
@@ -1594,7 +1599,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             // and gd
             if(gdi==gdiMAX) {
                ShowMessage("Too many groups in the file.");
-               return;
+               goto processEnd; //return;
             }
             gd[gdi].Group= cs; //sd[i].NAME+ sd[i].GROUPs;
             gd[gdi].FILTC= fc;
@@ -1813,6 +1818,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
        TAlogCalled= true;
     }
 
+processEnd:
+   ProcessButton->Enabled= true;
 }
 //---------------------------------------------------------------------------
 
@@ -2856,30 +2863,40 @@ int __fastcall checkChart(StarData* sd, bool getc) {
 }
 
 double __fastcall hhmmss2radians(char *z) {
-   double h, m, s;
-   sscanf(z, "%lf:%lf:%lf", &h, &m, &s);
-   return  0.261799388 * ((s/60.0+ m)/60.0 + h); // 15*pi/180
+   double h, m, s, r;
+   if(3==sscanf(z, "%lf:%lf:%lf", &h, &m, &s))
+      r= 15.0 * ((s/60.0+ m)/60.0 + h); // deg
+   else // it was in decimal degrees
+      r= h;
+   return r * 0.017453293; // pi/180
 }
 
 double __fastcall ddmmss2radians(char* z) {
-   double d, m, s;
-   sscanf(z, "%lf:%lf:%lf", &d, &m, &s);
-   return 0.017453293 * ((s/60.0+ m)/60.0 + d); // pi/180
+   double d, m, s, r;
+   bool neg;
+   neg= z[0]=='-';
+   if(neg) z[0]= ' ';
+   if(3==sscanf(z, "%lf:%lf:%lf", &d, &m, &s))
+      r= ((s/60.0+ m)/60.0 + d);
+   else // it was in decimal degrees
+      r= d;
+   if(neg) r*= -1.0;
+   return r * 0.017453293; // pi/180
 }
 
 //---------------------------------------------------------------------------
 //int __fastcall TForm1::getCREFMAG(TObject *Sender, StarData* sd)
 int __fastcall getREFMAG(StarData* sd, bool getc)
 {   // fill in sd C and K info from chart[]
-    int     I, ret, j, i;
-    char cp[100000];
-    AnsiString as;
+   int     I, ret, j, i;
+   char cp[100000];
+   AnsiString as;
 
-    ret= checkChart(sd, getc);
-    if(ret==1 || ret==-1) { // found or not in chart
-       return (ret==1)? 1: 0;
-    } else { // no. let's get more chart data
-       if(sd->CHART.Length()) { // assuming they gave us a chartid
+   ret= checkChart(sd, getc);
+   if(ret==1 || ret==-1) { // found or not in chart
+      return (ret==1)? 1: 0;
+   } else { // no. let's get more chart data
+      if(sd->CHART.Length()) { // assuming they gave us a chartid
 /*
           // old VSP method
           char* pch;
@@ -2888,7 +2905,7 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
           AnsiString u= "http://www.aavso.org/cgi-bin/vsp.pl?chartid="+ sd->CHART+ "&delimited=yes&ccdtable=on";
 //          AnsiString u= "http://www.aavso.org/cgi-bin/vsp_test.pl?chartid="+ sd->CHART+ "&delimited=yes&ccdtable=on";
           if(Form1->UseStdField->Checked) u+= "&std_field=on";
-          // eg   http://www.aavso.org/cgi-bin/vsp.pl?chartid=13591Dqq&delimited=yes&ccdtable=on
+          // eg
           if(!Form1->httpGet(u, cp, sizeof(cp))) {
              sd->ErrorMsg+= " failed chart request.";
              return 0;
@@ -2921,63 +2938,120 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
 
 */
 
-          // new API call
-          AnsiString u= "http://www.aavso.org/apps/vsp/api/chart/"+ sd->CHART+ "/?format=xml";
-          if(Form1->UseStdField->Checked) u+= "&special=std_field";
-          // eg   http://www.aavso.org/apps/vsp/api/chart/2164EAF/?format=xml
-          if(!Form1->httpGet(u, cp, sizeof(cp))) {
-             sd->ErrorMsg+= " failed VSP API chart request.";
-             return 0;
-          }
+         // new API call
+         AnsiString u= "http://www.aavso.org/apps/vsp/api/chart/"+ sd->CHART+ "/?format=xml";
+         if(Form1->UseStdField->Checked) u+= "&special=std_field";
+         // eg   http://www.aavso.org/apps/vsp/api/chart/2164EAF/?format=xml
+         if(!Form1->httpGet(u, cp, sizeof(cp))) {
+            sd->ErrorMsg+= " failed VSP API chart request.";
+            return 0;
+         }
           // cp not big enough?
 //          FILE * tf= fopen("testing.txt", "wt");
 //          fwrite(cp, 1, strlen(cp), tf);
 //          fclose(tf);
-          Form1->EasyXmlScanner1->LoadFromBuffer(cp);
-          Form1->EasyXmlScanner1->XmlParser->Normalize= true;
-          Form1->EasyXmlScanner1->XmlParser->StartScan();
-             int fref= 99;
-          AnsiString CurName, CurContent, ChartID;
-          while (Form1->EasyXmlScanner1->XmlParser->Scan()) {
-             if(Form1->EasyXmlScanner1->XmlParser->CurPartType == ptContent) {
-                CurName= Form1->EasyXmlScanner1->XmlParser->CurName;
-                CurContent= Form1->EasyXmlScanner1->XmlParser->CurContent;
-                if(CurName == "detail") { // CurContent will be "Not found."
-                   sd->ErrorMsg+= " Bad chart reference.";
-                   return 0; // won't get here. 404 error will precede
-                } else if(CurName == "chartid") {
-                   ChartID= CurContent.UpperCase();
-                   chart[chartNext % chartMAX].chartid= ChartID;
-                } else if(CurName == "auid") {
-                   chart[chartNext % chartMAX].AUID= CurContent;
-                } else if(CurName == "band") {
-                   for(fref= 0; fref< FILT_NUM; fref++) { // which filter? set fref
-                      if(CurContent.SubString(1, FILT_name[fref].Length()) == FILT_name[fref])
-                         break; // nb. API returns "B", "V", "Rc", "Ic"
-                   }
-                } else if(CurName == "mag" && fref != FILT_NUM) {
-                   chart[chartNext % chartMAX].sdata[fref].mag= CurContent.ToDouble();
-                } else if(CurName == "error" && fref != FILT_NUM) {
-                   chart[chartNext % chartMAX].sdata[fref].err= CurContent.ToDouble();
-                } else if(CurName == "label") {
-                   chart[chartNext % chartMAX].label= CurContent;
-                } else if(CurName == "ra") {
-                   chart[chartNext % chartMAX].RA= hhmmss2radians(CurContent.c_str());
-                } else if(CurName == "dec") {
-                   chart[chartNext % chartMAX].Dec= ddmmss2radians(CurContent.c_str());
-                   chartNext++; // end of record
-                   chart[chartNext % chartMAX].chartid= ChartID;
-                }
-             }
-          }
+         Form1->EasyXmlScanner1->LoadFromBuffer(cp);
+         Form1->EasyXmlScanner1->XmlParser->Normalize= true;
+         Form1->EasyXmlScanner1->XmlParser->StartScan();
+         int fref, listLevel= 0;
+         chartrow cr; sdatas sds;
+         AnsiString CurName, CurContent, ChartID= sd->CHART;
+         while (Form1->EasyXmlScanner1->XmlParser->Scan()) {
 
+            CurName= Form1->EasyXmlScanner1->XmlParser->CurName;
+            CurContent= Form1->EasyXmlScanner1->XmlParser->CurContent;
+            switch(Form1->EasyXmlScanner1->XmlParser->CurPartType) {
+               case ptStartTag:
+                  if(CurName == "list-item") {
+                     listLevel+= 1;
+                     // prep for collecting data from the list item
+                     switch(listLevel) {
+                        case 1: // photometry
+                           cr.chartid= ChartID;
+                           cr.AUID= "";
+                           cr.label= "";
+                           cr.RA= cr.Dec= 0.0;
+                           for(int i= 0; i< FILT_NUM; i++) cr.sdata[i].mag= cr.sdata[i].err= 0.0;
+                           break;
+                        case 2: // band
+                           fref= 99;
+                           sds.mag= sds.err= 0.0;
+                           break;
+                     }
+                  }
+                  break;
 
+               case ptContent:
+                  switch(listLevel) {
+                     case 0: // root
+                        //<comment/>
+                        //<star>RR And</star>
+                        //<maglimit>16.0</maglimit>
+                        //<special/>
+                        //<auid>000-BBC-124</auid>
+                        //<fov>30.0</fov>
+                        //<dec>24:59:55.9</dec> nb not RR And
+                        //<title/>
+                        //<dss>False</dss>
+                        if(CurName == "chartid") { //<chartid>X15267EM</chartid>
+                           if(CurContent!=sd->CHART) {
+                              sd->ErrorMsg+= " chart mismatch: fetched= "+ CurContent+ " and requested="+ ChartID;
+                              return 0;
+                           }   
+                        }
+                        //<image_uri>https://www.aavso.org/apps/vsp/chart/X15267EM.png</image_uri>
+                        //<ra>21:44:39.68</ra> nb not RR And
+                        //<resolution>100</resolution>
+                        //<photometry> list
+                        break; // root
+                     case 1: // photometry
+                        if(CurName == "auid")  //<auid>000-BBC-116</auid>
+                           cr.AUID= CurContent;
+                        //<bands> list
+                        //<comments/>
+                        else if(CurName == "label")  //<label>94</label>
+                           cr.label= CurContent;
+                        else if(CurName == "ra")  //<ra>00:51:10.69</ra>
+                           cr.RA= hhmmss2radians(CurContent.c_str());
+                        else if(CurName == "dec")  //<dec>34:16:27.3</dec>
+                           cr.Dec= ddmmss2radians(CurContent.c_str());
+                        break;
+                     case 2: // bands
+                        if(CurName == "band") //<band>V</band>
+                           for(fref= 0; fref< FILT_NUM; fref++) { // which filter? set fref
+                              if(CurContent.SubString(1, FILT_name[fref].Length()) == FILT_name[fref])
+                                 break; // nb. API returns "B", "V", "Rc", "Ic"
+                           }
+                        else if(CurName == "mag") sds.mag= CurContent.ToDouble(); //<mag>9.384</mag>
+                        else if(CurName == "error") sds.err= CurContent.ToDouble(); //<error>0.082</error>
+                        break;
+                  }
+                  break;
+
+               case ptEndTag:
+                  if(CurName == "list-item") {
+                     // use the data collected the list item
+                     switch(listLevel) {
+                        case 2: // band
+                           if(fref< FILT_NUM)
+                              cr.sdata[fref]= sds;
+                           break;
+                        case 1: // photometry
+                           chart[chartNext % chartMAX]= cr;
+                           chartNext++;
+                           break;
+                     }
+                     listLevel-= 1;
+                  }
+                  break;
+            } //switch CurPartType
+         } //while
           // so, let's try again
           return (checkChart(sd, getc)== 1)? 1: 0;
-       } else {
+      } else {
           sd->ErrorMsg+= " No chartid.";
           return 0;
-       }
+      }
    }
 }
 
@@ -3025,6 +3099,7 @@ int __fastcall getTargInfo(StarData* sd)
              //-- Loop thru the file for each item. Just look for TD items, assuming
              //   that they will not changed order (ie, not keying off the field table
              int cnt= 0;
+             // not a very safe parsing. Assumes too much
              while (Form1->EasyXmlScanner1->XmlParser->Scan()) {
                 if(Form1->EasyXmlScanner1->XmlParser->CurPartType == ptStartTag) {
                    if(Form1->EasyXmlScanner1->XmlParser->CurName == "TD") {
@@ -3038,7 +3113,7 @@ int __fastcall getTargInfo(StarData* sd)
                                   break;
                          case  4: s= Form1->EasyXmlScanner1->XmlParser->CurContent;
                                   sscanf(s.c_str(), "%lf,%lf", &RA, &Dec);
-                                  sd->VRA= RA/ 57.29577951;
+                                  sd->VRA= RA/ 57.29577951; // to radians
                                   sd->VDec= Dec/ 57.29577951;
                                   break;
                          case  5: sd->varType= Form1->EasyXmlScanner1->XmlParser->CurContent;
@@ -3062,7 +3137,52 @@ int __fastcall getTargInfo(StarData* sd)
     return ret;
 }
 
-
+/*   http://www.aavso.org/vsx/index.php?view=query.votable&ident=SX+Uma
+<?xml version="1.0" encoding="UTF-8"?>
+<VOTABLE version="1.0">
+    <RESOURCE>
+        <DESCRIPTION>International Variable Star Index (VSX) Query Results</DESCRIPTION>
+        <TABLE>
+            <FIELD id="auid" name="AUID"/>
+            <FIELD id="name" name="Name"/>
+            <FIELD id="const" name="Const"/>
+            <FIELD id="radec2000" name="Coords(J2000)"/>
+            <FIELD id="varType" name="VarType"/>
+            <FIELD id="maxMag" name="MaxMag"/>
+            <FIELD id="maxPass" name="MaxMagPassband"/>
+            <FIELD id="minMag" name="MinMag"/>
+            <FIELD id="minPass" name="MinMagPassband"/>
+            <FIELD id="epoch" name="Epoch"/>
+            <FIELD id="novaYr" name="NovaYear"/>
+            <FIELD id="period" name="Period"/>
+            <FIELD id="riseDur" name="RiseDuration"/>
+            <FIELD id="specType" name="SpecType"/>
+            <FIELD id="disc" name="Discoverer"/>
+            <DATA>
+                <TABLEDATA>
+                    <TR>
+                        <TD>000-BDB-211</TD>
+                        <TD>SX UMa</TD>
+                        <TD>UMa</TD>
+                        <TD>201.55608000,56.25697000</TD>
+                        <TD>RRC</TD>
+                        <TD>10.580</TD>
+                        <TD>V</TD>
+                        <TD>11.210</TD>
+                        <TD>V</TD>
+                        <TD>45109.33300</TD>
+                        <TD/>
+                        <TD>0</TD>
+                        <TD>38</TD>
+                        <TD>A4-F5</TD>
+                        <TD/>
+                    </TR>
+                </TABLEDATA>
+            </DATA>
+        </TABLE>
+    </RESOURCE>
+</VOTABLE>
+*/
 
 
 
