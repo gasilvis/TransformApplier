@@ -46,9 +46,11 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.43
+#define Version  2.44
 // if you change the version, change it too in  TAlog.php
 /*
+   2.44
+   - add GROUPs to aggregation critieria
    2.43
    - error in sexigesimal to radians
    - improve xml parsing of VSP data
@@ -1303,13 +1305,14 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             // VMAGraw as sum of VMAGraw's and VERR sum of VMAGraw^2 with an offset by sd[i].VMAG
             sdt.VMAGraw= sdt.VERR= 0; // so its starts as 0
             for(j= i+1, n= 1; j<sdii; j++) { // scan the rest for matches
-                if(!sd[j].processed &&
-                   sd[j].TRANS ==  sd[i].TRANS &&  //!sd[j].TRANS    &&
-                   sd[j].NAME ==   sd[i].NAME &&
-                   sd[j].FILT ==   sd[i].FILT &&
-                   sd[j].CNAME ==  sd[i].CNAME &&
-                   sd[j].KNAME ==  sd[i].KNAME &&
-                   sd[j].MTYPE ==  sd[i].MTYPE
+                if(!sd[j].processed
+                   && sd[j].TRANS ==  sd[i].TRANS   //!sd[j].TRANS
+                   && sd[j].NAME ==   sd[i].NAME
+                   && sd[j].FILT ==   sd[i].FILT
+                   && sd[j].CNAME ==  sd[i].CNAME
+                   && sd[j].KNAME ==  sd[i].KNAME
+                   && sd[j].MTYPE ==  sd[i].MTYPE
+                   && sd[j].GROUPs ==  sd[i].GROUPs
                    ) {
                    n++;
                    sdt.DATE+= sd[j].DATE;
@@ -1363,8 +1366,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                else s+= FormatFloat("0.000", sdt.KMAGraw)+ delim;
                if(sdt.AMASSna) s+= "na"+ delim;
                else   s+= FormatFloat("0.0000", sdt.AMASS)+ delim;
-               s+= sdt.GROUPs+ delim;
-               s+= sdt.CHART+ delim;
+               s+= sdt.GROUPs+ delim; // first record's group
+               s+= sdt.CHART+ delim;  // first record's chart
                s+= sdt.NOTES;
                sdt.record= s;
                sdt.narr= s;

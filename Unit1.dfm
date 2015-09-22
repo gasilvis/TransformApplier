@@ -186,7 +186,9 @@ object Form1: TForm1
         Top = 360
         Width = 137
         Height = 25
-        Hint = 'Aggregate all common obs'
+        Hint = 
+          'Aggregate obs with common target/filter/comp/check/trans/mtype a' +
+          'nd group'
         Caption = 'Aggregate'
         TabOrder = 12
       end
