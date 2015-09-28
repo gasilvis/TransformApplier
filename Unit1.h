@@ -195,6 +195,8 @@ __published:	// IDE-managed Components
    void __fastcall DSLRcbClick(TObject *Sender);
    void __fastcall ObsLonEditExit(TObject *Sender);
    void __fastcall ObsLatEditExit(TObject *Sender);
+   AnsiString __fastcall EncodeURIComponent(AnsiString ASrc);
+   bool __fastcall IsSafeChar(int ch);
 
 private:	// User declarations
 public:		// User declarations

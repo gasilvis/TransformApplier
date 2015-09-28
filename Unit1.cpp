@@ -46,9 +46,13 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.44
+#define Version  2.45
 // if you change the version, change it too in  TAlog.php
 /*
+   2.45
+   - httpget does url encoding (+ sign needs encoding)
+   - fail on VSX call if no data available
+   - show location when extinction applied
    2.44
    - add GROUPs to aggregation critieria
    2.43
@@ -1253,13 +1257,17 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             }
          }
          // get extra Star info from VSX
-         getTargInfo(&sd[sdi]);
-         // compute airmasses of target, comp and check
-         st.sprintf("date= %f, AMASS= %.4f", sd[sdi].DATE, sd[sdi].AMASS);
-         st+= r.sprintf(", VX= %.4f", sd[sdi].Vairmass= AirMass(sd[sdi].DATE, sd[sdi].VRA, sd[sdi].VDec));
-         st+= r.sprintf(", CX= %.4f", sd[sdi].Cairmass= AirMass(sd[sdi].DATE, sd[sdi].CRA, sd[sdi].CDec));
-         st+= r.sprintf(", KX= %.4f", sd[sdi].Kairmass= AirMass(sd[sdi].DATE, sd[sdi].KRA, sd[sdi].KDec));
-         Memo6->Lines->Add(st);
+         if(1==getTargInfo(&sd[sdi])) {
+            // compute airmasses of target, comp and check
+            st.sprintf("date= %f, AMASS= %.4f", sd[sdi].DATE, sd[sdi].AMASS);
+            st+= r.sprintf(", VX= %.4f", sd[sdi].Vairmass= AirMass(sd[sdi].DATE, sd[sdi].VRA, sd[sdi].VDec));
+            st+= r.sprintf(", CX= %.4f", sd[sdi].Cairmass= AirMass(sd[sdi].DATE, sd[sdi].CRA, sd[sdi].CDec));
+            st+= r.sprintf(", KX= %.4f", sd[sdi].Kairmass= AirMass(sd[sdi].DATE, sd[sdi].KRA, sd[sdi].KDec));
+            Memo6->Lines->Add(st);
+         } else {
+            ShowMessage("Cannot find target ("+ sd[sdi].NAME + ") in VSX.");
+            return;
+         }
 
          // Use Vairmass if avail and AMASS was na
          if(sd[sdi].AMASSna && sd[sdi].Vairmass!=0) {
@@ -1672,6 +1680,8 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
                   for(int i= 0; i<NumECoef; i++)
                      if(*EC[i].value!=0) // if non-zero
                         Memo2->Lines->Add(st.sprintf("#%s= %0.4f, +/- %0.4f", EC[i].name, *EC[i].value, *EC[i].error));
+                  // show location
+                  Memo2->Lines->Add(st.sprintf("#location: long= %s and lat= %s", ObsLonEdit->Text, ObsLatEdit->Text));
                }
                trans_display= true;
             }
@@ -2699,7 +2709,7 @@ void __fastcall TForm1::Open1Click(TObject *Sender)
               Memo1->Lines->Append(Line);
            fclose(stream);
          }
-      }   
+      }
    };
    // Save the directory
    TIniFile *ini= new TIniFile(INIfilename);
@@ -3129,7 +3139,8 @@ int __fastcall getTargInfo(StarData* sd)
                                   targs[targNext % targMAX].varType= sd->varType;
                                   targs[targNext % targMAX].specType= sd->specType;
                                   targNext++;
-                                  break;
+                                  return 1;
+                                  //break;
                       }
                    }
                 }
@@ -3435,15 +3446,61 @@ void __fastcall TForm1::DSLRcbClick(TObject *Sender)
 
 
 
+bool __fastcall TForm1::IsSafeChar(int ch)
+{
+   bool Result;
+   if     (ch >= 48 && ch <= 57) Result= true;    // 0-9
+   else if(ch >= 61 && ch <= 90) Result= true;  // =?>@A-Z
+   else if(ch >= 97 && ch <= 122) Result= true;  // a-z
+   else if(ch == 33) Result= true; // !
+   else if(ch >= 38 && ch <= 42) Result= true; // &'()*
+   else if(ch >= 44 && ch <= 46) Result= true; // ,-.
+   else if(ch == 95) Result= true; // _
+   else if(ch == 126) Result= true; // ~
+   else if(ch == 58) Result= true; // :
+   else if(ch == 47) Result= true; // /
+   else Result= false;
+   return Result;
+}
+
+AnsiString __fastcall TForm1::EncodeURIComponent(AnsiString ASrc)
+{
+   AnsiString UTF8String, HexMap= "0123456789ABCDEF", Result= "", ASrcUTF8;
+   int I= 1, J= 1;
+
+   ASrcUTF8= ASrc; //ASrcUTF8 := UTF8Encode(ASrc);
+   // UTF8Encode call not strictly necessary but
+   // prevents implicit conversion warning
+
+   Result.SetLength(ASrcUTF8.Length() * 3); // space to %xx encode every byte
+   while(I <= ASrcUTF8.Length()) {
+      if(IsSafeChar(ASrcUTF8[I])) {
+         Result[J]= ASrcUTF8[I];
+         J++;
+      }
+      else if(ASrcUTF8[I] == ' ') {
+         Result[J]= '+';
+         J++;
+      }
+      else {
+         Result[J]= '%';
+         Result[J+1]= HexMap[(ASrcUTF8[I] >> 4) + 1];
+         Result[J+2]= HexMap[(ASrcUTF8[I] & 0x0F) + 1];
+         J+= 3;
+      }
+      I++;
+   }
+   Result.SetLength(J-1);
+   return Result;
+}
+
 
 
 // http Get stuff
 bool __fastcall TForm1::httpGet(AnsiString URL, char* buffer, int bufsize)
 {
    TStream *DataIn;
-   // simple encoding: replace ' ' with '+'
-   while(URL.Pos(" ")) URL[URL.Pos(" ")]= '+';
-   HttpCli1->URL        = URL;
+   HttpCli1->URL        = EncodeURIComponent(URL);
    HttpCli1->RcvdStream = NULL;
    char altbuffer[100];
    char* buf;
