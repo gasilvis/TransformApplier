@@ -227,7 +227,7 @@ bool TAlogCalled= false;
 void __fastcall TForm1::FormCreate(TObject *Sender)
 {
    AnsiString s;
-   char cp[1000];
+   char cp[1000];  
    float cver;
 
    Form1->Caption= "TA, the AAVSO Transform Applier application, "+ FormatFloat("version 0.00", Version);
@@ -3512,6 +3512,7 @@ bool __fastcall TForm1::httpGet(AnsiString URL, char* buffer, int bufsize)
       HttpCli1->Get();
       DataIn = new TFileStream(Form1->HttpCli1->DocName, fmOpenRead);
       DataIn->ReadBuffer(buf, min(bufsize, DataIn->Size));
+      buf[min(bufsize, DataIn->Size)]= 0; // terminate string
       delete DataIn;
       remove(HttpCli1->DocName.c_str());
       return true;
