@@ -46,13 +46,16 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.45
+#define Version  2.46
 // if you change the version, change it too in  TAlog.php
 /*
+   2.46
+   - not finding target in VSX downgraded to warning
    2.45
    - httpget does url encoding (+ sign needs encoding)
    - fail on VSX call if no data available
    - show location when extinction applied
+   - string terminate the httpget capture.
    2.44
    - add GROUPs to aggregation critieria
    2.43
@@ -1265,8 +1268,9 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
             st+= r.sprintf(", KX= %.4f", sd[sdi].Kairmass= AirMass(sd[sdi].DATE, sd[sdi].KRA, sd[sdi].KDec));
             Memo6->Lines->Add(st);
          } else {
-            ShowMessage("Cannot find target ("+ sd[sdi].NAME + ") in VSX.");
-            return;
+            //ShowMessage("Cannot find target ("+ sd[sdi].NAME + ") in VSX.");
+            //goto processEnd; //return;
+            sd[sdi].ErrorMsg+= " target not in VSX.";
          }
 
          // Use Vairmass if avail and AMASS was na
