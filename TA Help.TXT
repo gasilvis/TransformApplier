@@ -78,7 +78,6 @@ BV             Tb_bv   Tbv
 VR                     Tv_vr   Tvr
 VI                     Tv_vi           Tvi
 - The classic transform equations from the literature are:
-for      U       B       V       R       I
 BVRI           Tr_ri, Tri, Tv_vr, Tvr and Tbv   deprecated
 BVR            Tbv     Tv_vr   Tvr
 BVI            Tbv     Tv_vi           Tvi

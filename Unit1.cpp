@@ -46,9 +46,12 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.46
+#define Version  2.47
 // if you change the version, change it too in  TAlog.php
 /*
+   2.47
+   - hints for observation location
+   - default AMASS fixed. na case inherited old data
    2.46
    - not finding target in VSX downgraded to warning
    2.45
@@ -1182,10 +1185,12 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
 
          j= s.SubString(k, 20).Pos(delim);
          // airmass might be NA
-         if(s.SubString(k,2).LowerCase()=="na") sd[sdi].AMASSna= true;
-         else {
+         if(s.SubString(k,2).LowerCase()=="na") {
+            sd[sdi].AMASSna= true;
+            sd[sdi].AMASS= 0;
+         } else {
             sd[sdi].AMASS= s.SubString(k, j- 1).ToDouble();
-            sd[sdi].AMASSna= false;
+            sd[sdi].AMASSna= false; // check AMASS for validity?
          }
          k+= j;
 
@@ -1262,21 +1267,23 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
          // get extra Star info from VSX
          if(1==getTargInfo(&sd[sdi])) {
             // compute airmasses of target, comp and check
+            sd[sdi].Vairmass= AirMass(sd[sdi].DATE, sd[sdi].VRA, sd[sdi].VDec);
+            sd[sdi].Cairmass= AirMass(sd[sdi].DATE, sd[sdi].CRA, sd[sdi].CDec);
+            sd[sdi].Kairmass= AirMass(sd[sdi].DATE, sd[sdi].KRA, sd[sdi].KDec);
+            // Use Vairmass if avail and AMASS was na
+            if(sd[sdi].AMASSna && sd[sdi].Vairmass!=0) {
+               sd[sdi].AMASS= sd[sdi].Vairmass;
+               sd[sdi].AMASSna= false;
+            }
             st.sprintf("date= %f, AMASS= %.4f", sd[sdi].DATE, sd[sdi].AMASS);
-            st+= r.sprintf(", VX= %.4f", sd[sdi].Vairmass= AirMass(sd[sdi].DATE, sd[sdi].VRA, sd[sdi].VDec));
-            st+= r.sprintf(", CX= %.4f", sd[sdi].Cairmass= AirMass(sd[sdi].DATE, sd[sdi].CRA, sd[sdi].CDec));
-            st+= r.sprintf(", KX= %.4f", sd[sdi].Kairmass= AirMass(sd[sdi].DATE, sd[sdi].KRA, sd[sdi].KDec));
+            st+= r.sprintf(", VX= %.4f", sd[sdi].Vairmass);
+            st+= r.sprintf(", CX= %.4f", sd[sdi].Cairmass);
+            st+= r.sprintf(", KX= %.4f", sd[sdi].Kairmass);
             Memo6->Lines->Add(st);
          } else {
             //ShowMessage("Cannot find target ("+ sd[sdi].NAME + ") in VSX.");
             //goto processEnd; //return;
             sd[sdi].ErrorMsg+= " target not in VSX.";
-         }
-
-         // Use Vairmass if avail and AMASS was na
-         if(sd[sdi].AMASSna && sd[sdi].Vairmass!=0) {
-            sd[sdi].AMASS= sd[sdi].Vairmass;
-            sd[sdi].AMASSna= false;
          }
 
          // look for color information

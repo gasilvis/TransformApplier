@@ -1212,6 +1212,7 @@ object Form1: TForm1
           Top = 40
           Width = 88
           Height = 21
+          Hint = 'Longitude in degrees, West is negative'
           Caption = 'Longitude'
         end
         object Label21: TLabel
@@ -1219,6 +1220,7 @@ object Form1: TForm1
           Top = 72
           Width = 71
           Height = 21
+          Hint = 'Latitude in degrees'
           Caption = 'Latitude'
         end
         object ObsLonEdit: TEdit
