@@ -1395,7 +1395,6 @@ object Form1: TForm1
           'VR                     Tv_vr   Tvr'
           'VI                     Tv_vi           Tvi'
           '- The classic transform equations from the literature are:'
-          'for      U       B       V       R       I'
           'BVRI           Tr_ri, Tri, Tv_vr, Tvr and Tbv   deprecated'
           'BVR            Tbv     Tv_vr   Tvr'
           'BVI            Tbv     Tv_vi           Tvi'
@@ -1595,7 +1594,6 @@ object Form1: TForm1
           ''
           ''
           ''
-          ''
           '')
         ParentFont = False
         ReadOnly = True
@@ -1715,17 +1713,17 @@ object Form1: TForm1
   object HttpCli1: THttpCli
     LocalAddr = '0.0.0.0'
     ProxyPort = '80'
-    Agent = 'Mozilla/4.0'
-    Accept = 'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*'
+    Agent = 'Mozilla/4.0 (compatible; ICS)'
+    Accept = '*/*'
     NoCache = False
     ContentTypePost = 'application/x-www-form-urlencoded'
     MultiThreaded = False
     RequestVer = '1.0'
     FollowRelocation = True
-    LocationChangeMaxCount = 5
+    LocationChangeMaxCount = 15
     BandwidthLimit = 10000
     BandwidthSampling = 1000
-    Options = []
+    Options = [httpoUseQuality]
     OnDocBegin = HttpCli1DocBegin
     OnDocEnd = HttpCli1DocEnd
     SocksAuthentication = socksNoAuthentication

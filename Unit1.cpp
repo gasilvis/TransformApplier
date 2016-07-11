@@ -46,9 +46,11 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.47
+#define Version  2.48
 // if you change the version, change it too in  TAlog.php
 /*
+   2.48
+   - check chartID's; don't assume they are in caps
    2.47
    - hints for observation location
    - default AMASS fixed. na case inherited old data
@@ -3018,7 +3020,7 @@ int __fastcall getREFMAG(StarData* sd, bool getc)
                         //<title/>
                         //<dss>False</dss>
                         if(CurName == "chartid") { //<chartid>X15267EM</chartid>
-                           if(CurContent!=sd->CHART) {
+                           if(CurContent.UpperCase()!=sd->CHART.UpperCase()) {
                               sd->ErrorMsg+= " chart mismatch: fetched= "+ CurContent+ " and requested="+ ChartID;
                               return 0;
                            }   
@@ -3530,6 +3532,8 @@ bool __fastcall TForm1::httpGet(AnsiString URL, char* buffer, int bufsize)
    } __except (TRUE) {
       if(Form1->HttpCli1->StatusCode==404) {
          return false; // let caller cope with "not found"
+//      } else if(Form1->HttpCli1->StatusCode==406) {
+//         return true; // ignore
       } else {
          Form1->Memo4->Lines->Add("GET Failed !");
          Form1->Memo4->Lines->Add("StatusCode   = " + IntToStr(Form1->HttpCli1->StatusCode));
