@@ -969,7 +969,7 @@ void __fastcall TForm1::ProcessButtonClick(TObject *Sender)
    delim= ';';  ndelim= '|'; // defaults
    Memo6->Lines->Clear();
    ProcessButton->Enabled= false;
-   
+
    // Extinction turned off
 //   applyExtinction->Checked= false;
 
@@ -2609,16 +2609,18 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= 0;
             break;
          }
-         // set Ic and rIc for comp's ref color
-         Ic= 0.0; // chart default too
+         // set Vc, Ic and rVc, rIc for comp's ref color
+         Vc= Ic= 0.0; // chart default too
          for(int i= 0; i< min(chartNext, chartMAX); i++) {
             if(chart[i].AUID == d->CNAME) { // same comp star
+               Vc= chart[i].sdata[FILT_Vi].mag;
+               rVc= chart[i].sdata[FILT_Vi].err;
                Ic= chart[i].sdata[FILT_Ii].mag;
                rIc= chart[i].sdata[FILT_Ii].err;
                break;
             }
          }
-         if(Ic== 0.0) { d->ErrorMsg+= " Can not find Ic for comp color!"; d->TRANS= 0; break; }
+         if(Ic== 0.0 || Vc==0.0) { d->ErrorMsg+= " Can not find Vc or Ic for comp color!"; d->TRANS= 0; break; }
 
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= 0; break; }
@@ -2649,16 +2651,16 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= 0;
             break;
          }
-         // set Rc and rRc for comp's ref color
-         Rc= 0.0; // chart default too
+         // set Vc and rVc for comp's ref color
+         Vc= 0.0; // chart default too
          for(int i= 0; i< min(chartNext, chartMAX); i++) {
             if(chart[i].AUID == d->CNAME) { // same comp star
-               Rc= chart[i].sdata[FILT_Ri].mag;
-               rRc= chart[i].sdata[FILT_Ri].err;
+               Vc= chart[i].sdata[FILT_Vi].mag;
+               rVc= chart[i].sdata[FILT_Vi].err;
                break;
             }
          }
-         if(Rc== 0.0) { d->ErrorMsg+= " Can not find Rc for comp color!"; d->TRANS= 0; break; }
+         if(Vc== 0.0) { d->ErrorMsg+= " Can not find Vc for comp color!"; d->TRANS= 0; break; }
 
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= 0; break; }
