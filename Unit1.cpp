@@ -46,9 +46,11 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 }
 //---------------------------------------------------------------------------
 
-#define Version  2.48
+#define Version  2.49
 // if you change the version, change it too in  TAlog.php
 /*
+   2.49
+   - fix bug in 1 filt transform: ref of comp other filter not set 
    2.48
    - check chartID's; don't assume they are in caps
    2.47
@@ -2535,6 +2537,17 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= 0;
             break;
          }
+         // set Vc and rVc for comp's ref color
+         Vc= 0.0; // chart default too
+         for(int i= 0; i< min(chartNext, chartMAX); i++) {
+            if(chart[i].AUID == d->CNAME) { // same comp star
+               Vc= chart[i].sdata[FILT_Vi].mag;
+               rVc= chart[i].sdata[FILT_Vi].err;
+               break;
+            }
+         }
+         if(Vc== 0.0) { d->ErrorMsg+= " Can not find Vc for comp color!"; d->TRANS= 0; break; }
+
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= 0; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
@@ -2560,6 +2573,17 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= 0;
             break;
          }
+         // set Bc and rBc for comp's ref color
+         Bc= 0.0; // chart default too
+         for(int i= 0; i< min(chartNext, chartMAX); i++) {
+            if(chart[i].AUID == d->CNAME) { // same comp star
+               Bc= chart[i].sdata[FILT_Bi].mag;
+               rBc= chart[i].sdata[FILT_Bi].err;
+               break;
+            }
+         }
+         if(Bc== 0.0) { d->ErrorMsg+= " Can not find Bc for comp color!"; d->TRANS= 0; break; }
+
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= 0; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
@@ -2585,6 +2609,17 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= 0;
             break;
          }
+         // set Ic and rIc for comp's ref color
+         Ic= 0.0; // chart default too
+         for(int i= 0; i< min(chartNext, chartMAX); i++) {
+            if(chart[i].AUID == d->CNAME) { // same comp star
+               Ic= chart[i].sdata[FILT_Ii].mag;
+               rIc= chart[i].sdata[FILT_Ii].err;
+               break;
+            }
+         }
+         if(Ic== 0.0) { d->ErrorMsg+= " Can not find Ic for comp color!"; d->TRANS= 0; break; }
+
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= 0; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
@@ -2614,6 +2649,17 @@ void ProcessStarData(StarData *d, unsigned short fc)
             d->TRANS= 0;
             break;
          }
+         // set Rc and rRc for comp's ref color
+         Rc= 0.0; // chart default too
+         for(int i= 0; i< min(chartNext, chartMAX); i++) {
+            if(chart[i].AUID == d->CNAME) { // same comp star
+               Rc= chart[i].sdata[FILT_Ri].mag;
+               rRc= chart[i].sdata[FILT_Ri].err;
+               break;
+            }
+         }
+         if(Rc== 0.0) { d->ErrorMsg+= " Can not find Rc for comp color!"; d->TRANS= 0; break; }
+
          Bs= bs, Vs= vs, Rs= rs, Is= is; loop= 0;
          do { if(++loop > MAXITER) { d->ErrorMsg+= " Formula error! Check your coefficients!"; d->TRANS= 0; break; }
             oBs= Bs, oVs= Vs, oRs= Rs, oIs= Is;
